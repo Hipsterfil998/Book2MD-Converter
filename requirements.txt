@@ -1,4 +1,4 @@
-stanza --quiet
+stanza
 ebooklib 
 pymupdf
 transformers 
