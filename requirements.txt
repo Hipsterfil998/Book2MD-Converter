@@ -8,3 +8,4 @@ pillow
 markdownify
 markdown
 beautifulsoup4
+pypandoc
