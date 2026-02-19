@@ -1,161 +1,139 @@
-#!/usr/bin/env python3
 """
-Dependency parsing of txt files using Stanza.
+Dependency parsing of Markdown files using Stanza.
+Markdown is converted to plain text before parsing.
 Supports Italian and German. Outputs CoNLL-U and/or JSON.
 """
 
-import argparse
 import json
-import os
-import glob
+from pathlib import Path
+
+import markdown
+from bs4 import BeautifulSoup
 import stanza
 
 
-def ensure_model(lang):
-    """Download Stanza model if not already present."""
-    try:
-        stanza.Pipeline(lang=lang, processors="tokenize", download_method=None)
-    except Exception:
-        print(f"Downloading Stanza model for '{lang}'...")
-        stanza.download(lang)
+class DependencyParser:
 
+    def __init__(self, langs: list = ["it", "de"], output_format: str = "both"):
+        """
+        Args:
+            langs: list of Stanza language codes, e.g. ["it", "de"]
+            output_format: "conllu", "json", or "both"
+        """
+        self.langs = langs
+        self.output_format = output_format
+        self.pipelines = {}
 
-def parse_file(pipeline, filepath):
-    """Read a txt file and run the dependency parsing pipeline."""
-    with open(filepath, "r", encoding="utf-8") as f:
-        text = f.read()
-    if not text.strip():
-        print(f"  Skipping empty file: {filepath}")
-        return None
-    doc = pipeline(text)
-    return doc
+    def _md_to_txt(self, md_text: str) -> str:
+        """Convert Markdown to plain text."""
+        html = markdown.markdown(md_text)
+        return BeautifulSoup(html, "html.parser").get_text(separator="\n")
 
+    def _ensure_model(self, lang: str) -> None:
+        """Download Stanza model if not already present."""
+        try:
+            stanza.Pipeline(lang=lang, processors="tokenize", download_method=None)
+        except Exception:
+            print(f"Downloading Stanza model for '{lang}'...")
+            stanza.download(lang)
 
-def doc_to_conllu(doc):
-    """Convert a Stanza Document to CoNLL-U formatted string."""
-    lines = []
-    for sentence in doc.sentences:
-        for word in sentence.words:
-            head = word.head if word.head is not None else 0
-            fields = [
-                str(word.id),
-                word.text,
-                word.lemma if word.lemma else "_",
-                word.upos if word.upos else "_",
-                word.xpos if word.xpos else "_",
-                word.feats if word.feats else "_",
-                str(head),
-                word.deprel if word.deprel else "_",
-                "_",  # deps
-                "_",  # misc
+    def _load_pipelines(self) -> None:
+        """Initialize one Stanza pipeline per language."""
+        for lang in self.langs:
+            print(f"Loading Stanza pipeline for '{lang}'...")
+            self._ensure_model(lang)
+            self.pipelines[lang] = stanza.Pipeline(
+                lang=lang,
+                processors="tokenize,mwt,pos,lemma,depparse",
+                download_method=None,
+            )
+
+    def _doc_to_conllu(self, doc) -> str:
+        """Convert a Stanza Document to CoNLL-U string."""
+        lines = []
+        for sentence in doc.sentences:
+            for word in sentence.words:
+                fields = [
+                    str(word.id),
+                    word.text,
+                    word.lemma or "_",
+                    word.upos or "_",
+                    word.xpos or "_",
+                    word.feats or "_",
+                    str(word.head if word.head is not None else 0),
+                    word.deprel or "_",
+                    "_",
+                    "_",
+                ]
+                lines.append("\t".join(fields))
+            lines.append("")
+        return "\n".join(lines)
+
+    def _doc_to_json(self, doc, source_file: str, lang: str) -> dict:
+        """Convert a Stanza Document to a JSON-serialisable dict."""
+        sentences = []
+        for sentence in doc.sentences:
+            tokens = [
+                {
+                    "id": word.id,
+                    "text": word.text,
+                    "lemma": word.lemma,
+                    "upos": word.upos,
+                    "xpos": word.xpos,
+                    "feats": word.feats,
+                    "head": word.head if word.head is not None else 0,
+                    "deprel": word.deprel,
+                }
+                for word in sentence.words
             ]
-            lines.append("\t".join(fields))
-        lines.append("")  # blank line between sentences
-    return "\n".join(lines)
+            sentences.append({"tokens": tokens})
+        return {"file": source_file, "lang": lang, "sentences": sentences}
 
+    def run(self, input_dir: str, output_dir: str = None) -> None:
+        """
+        Parse all .md files in input_dir.
+        For each file: convert md -> txt, then run dependency parsing.
+        """
+        input_path = Path(input_dir)
+        output_path = Path(output_dir) if output_dir else input_path / "parsed_output"
+        output_path.mkdir(parents=True, exist_ok=True)
 
-def doc_to_json(doc):
-    """Convert a Stanza Document to a JSON-serialisable structure."""
-    sentences = []
-    for sentence in doc.sentences:
-        tokens = []
-        for word in sentence.words:
-            tokens.append({
-                "id": word.id,
-                "text": word.text,
-                "lemma": word.lemma,
-                "upos": word.upos,
-                "xpos": word.xpos,
-                "feats": word.feats,
-                "head": word.head if word.head is not None else 0,
-                "deprel": word.deprel,
-            })
-        sentences.append({"tokens": tokens})
-    return sentences
+        md_files = sorted(input_path.glob("**/*.md"))
+        if not md_files:
+            print(f"No .md files found in {input_dir}")
+            return
 
+        print(f"Found {len(md_files)} markdown file(s)")
+        print(f"Output: {output_path}\n")
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Run Stanza dependency parsing on a collection of txt files."
-    )
-    parser.add_argument(
-        "-i", "--input-dir",
-        default=".",
-        help="Directory containing .txt files (default: current directory)",
-    )
-    parser.add_argument(
-        "-o", "--output-dir",
-        default=None,
-        help="Output directory (default: <input-dir>/parsed_output)",
-    )
-    parser.add_argument(
-        "-l", "--lang",
-        nargs="+",
-        default=["it", "de"],
-        help="Language code(s) for Stanza, e.g. 'it' 'de' (default: it de)",
-    )
-    parser.add_argument(
-        "-f", "--format",
-        choices=["conllu", "json", "both"],
-        default="both",
-        help="Output format (default: both)",
-    )
-    args = parser.parse_args()
+        self._load_pipelines()
 
-    input_dir = os.path.abspath(args.input_dir)
-    output_dir = args.output_dir or os.path.join(input_dir, "parsed_output")
-    os.makedirs(output_dir, exist_ok=True)
+        for md_file in md_files:
+            print(f"Processing: {md_file.name}")
+            md_text = md_file.read_text(encoding="utf-8")
+            text = self._md_to_txt(md_text)
 
-    txt_files = sorted(glob.glob(os.path.join(input_dir, "*.txt")))
-    if not txt_files:
-        print(f"No .txt files found in {input_dir}")
-        return
-
-    print(f"Found {len(txt_files)} txt file(s) in {input_dir}")
-    print(f"Output directory: {output_dir}")
-    print(f"Languages: {args.lang}")
-    print(f"Format: {args.format}\n")
-
-    # Build a pipeline per language
-    pipelines = {}
-    for lang in args.lang:
-        print(f"Loading Stanza pipeline for '{lang}'...")
-        ensure_model(lang)
-        pipelines[lang] = stanza.Pipeline(
-            lang=lang,
-            processors="tokenize,mwt,pos,lemma,depparse",
-            download_method=None,
-        )
-
-    for filepath in txt_files:
-        basename = os.path.splitext(os.path.basename(filepath))[0]
-        print(f"Processing: {os.path.basename(filepath)}")
-
-        for lang in args.lang:
-            doc = parse_file(pipelines[lang], filepath)
-            if doc is None:
+            if not text.strip():
+                print(f"  Skipping empty file: {md_file.name}")
                 continue
 
-            suffix = f"_{lang}" if len(args.lang) > 1 else ""
+            stem = md_file.stem
+            for lang in self.langs:
+                doc = self.pipelines[lang](text)
+                suffix = f"_{lang}" if len(self.langs) > 1 else ""
 
-            if args.format in ("conllu", "both"):
-                conllu_path = os.path.join(output_dir, f"{basename}{suffix}.conllu")
-                with open(conllu_path, "w", encoding="utf-8") as f:
-                    f.write(doc_to_conllu(doc))
-                print(f"  -> {conllu_path}")
+                if self.output_format in ("conllu", "both"):
+                    out = output_path / f"{stem}{suffix}.conllu"
+                    out.write_text(self._doc_to_conllu(doc), encoding="utf-8")
+                    print(f"  -> {out}")
 
-            if args.format in ("json", "both"):
-                json_path = os.path.join(output_dir, f"{basename}{suffix}.json")
-                with open(json_path, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {"file": os.path.basename(filepath), "lang": lang,
-                         "sentences": doc_to_json(doc)},
-                        f, ensure_ascii=False, indent=2,
+                if self.output_format in ("json", "both"):
+                    out = output_path / f"{stem}{suffix}.json"
+                    out.write_text(
+                        json.dumps(self._doc_to_json(doc, md_file.name, lang),
+                                   ensure_ascii=False, indent=2),
+                        encoding="utf-8",
                     )
-                print(f"  -> {json_path}")
+                    print(f"  -> {out}")
 
-    print("\nDone.")
-
-
-if __name__ == "__main__":
-    main()
+        print("\nDone.")

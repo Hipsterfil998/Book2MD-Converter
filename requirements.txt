@@ -1,3 +1,10 @@
 stanza --quiet
 ebooklib 
 pymupdf
+transformers 
+accelerate 
+pdf2image 
+pillow
+markdownify
+markdown
+beautifulsoup4
