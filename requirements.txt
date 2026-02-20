@@ -2,14 +2,12 @@ tqdm
 stanza
 ebooklib
 pymupdf
-torch
 vllm>=0.8.0
 huggingface_hub
 pandas
 openpyxl
 pdf2image  # requires system package: apt install poppler-utils (Linux) / brew install poppler (macOS)
 pillow
-markdownify
 markdown
 beautifulsoup4
 pypandoc
