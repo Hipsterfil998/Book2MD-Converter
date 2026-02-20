@@ -1,6 +1,5 @@
 import glob
 from pathlib import Path
-
 from converters.text_extraction import DocumentProcessor
 from converters.pdf2md_LLM import PDFToMarkdownConverter
 from converters.epub2md_LLM import EpubToMarkdownConverter

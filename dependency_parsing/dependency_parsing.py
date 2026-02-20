@@ -6,7 +6,6 @@ Supports Italian and German. Outputs CoNLL-U and/or JSON.
 
 import json
 from pathlib import Path
-
 import markdown
 from bs4 import BeautifulSoup
 import stanza
