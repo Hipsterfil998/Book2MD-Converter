@@ -1,9 +1,13 @@
 stanza
-ebooklib 
+ebooklib
 pymupdf
-transformers 
-accelerate 
-pdf2image 
+torch
+transformers
+accelerate
+huggingface_hub
+pandas
+openpyxl
+pdf2image
 pillow
 markdownify
 markdown
