@@ -4,16 +4,17 @@ from tqdm import tqdm
 from converters.text_extraction import DocumentProcessor
 from converters.pdf2md_LLM import PDFToMarkdownConverter
 from converters.epub2md_LLM import EpubToMarkdownConverter
+from config import PDF_MODEL_ID, TEXT_MODEL_ID, INPUT_DIR, OUTPUT_DIR
 
 
 class ConverterPipeline:
 
     def __init__(
         self,
-        input_dir: str,
-        output_dir: str,
-        pdf_model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct",
-        text_model_id: str = "Qwen/Qwen2.5-7B-Instruct",
+        input_dir: str = INPUT_DIR,
+        output_dir: str = OUTPUT_DIR,
+        pdf_model_id: str = PDF_MODEL_ID,
+        text_model_id: str = TEXT_MODEL_ID,
     ):
         self.input_dir = input_dir
         self.output_dir = output_dir

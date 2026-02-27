@@ -7,6 +7,7 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 ## Project Structure
 
 ```
+├── config.py                      # Central configuration (models, paths, parameters)
 ├── book_converter.py              # Main pipeline orchestrator
 ├── converters/
 │   ├── text_extraction.py         # Rule-based PDF/EPUB → Markdown (no LLM)
@@ -20,6 +21,34 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 │   └── dependency_parsing.py      # Stanza-based dependency parsing
 └── requirements.txt
 ```
+
+---
+
+## Configuration
+
+All parameters are centralised in `config.py`. Edit this file before running on Colab — no need to touch individual modules.
+
+```python
+# Models
+PDF_MODEL_ID  = "Qwen/Qwen2.5-VL-7B-Instruct"  # vision-language (PDF → MD, PDF eval)
+TEXT_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"     # text-only (EPUB → MD, metadata)
+
+# Generation
+PDF_MAX_NEW_TOKENS   = 4096
+EPUB_MAX_NEW_TOKENS  = 2_048
+METADATA_MAX_NEW_TOKENS = 128
+
+# Evaluation sampling
+EVAL_N = 20  # pages/chunks sampled per book
+
+# Paths
+INPUT_DIR    = "books/"
+OUTPUT_DIR   = "output/"
+SCORES_DIR   = "scores/"
+METADATA_CSV = "metadata/metadata.csv"
+```
+
+Every constructor still accepts the same parameters explicitly, so individual overrides remain possible without editing the config.
 
 ---
 

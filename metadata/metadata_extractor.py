@@ -10,6 +10,7 @@ import json
 import pandas as pd
 from pathlib import Path
 from vllm import LLM, SamplingParams
+from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS
 
 
 BIBLIO_PROMPT = """\
@@ -61,8 +62,8 @@ class MetadataExtractor:
 
     def __init__(
         self,
-        model_id: str = "Qwen/Qwen2.5-7B-Instruct",
-        max_new_tokens: int = 128,
+        model_id: str = TEXT_MODEL_ID,
+        max_new_tokens: int = METADATA_MAX_NEW_TOKENS,
     ):
         self.max_new_tokens = max_new_tokens
         self.llm = LLM(model=model_id, dtype="bfloat16")

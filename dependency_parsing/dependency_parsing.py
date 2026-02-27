@@ -9,11 +9,12 @@ from pathlib import Path
 import markdown
 from bs4 import BeautifulSoup
 import stanza
+from config import PARSE_LANGS, PARSE_OUTPUT_FORMAT
 
 
 class DependencyParser:
 
-    def __init__(self, langs: list = ["it", "de"], output_format: str = "both"):
+    def __init__(self, langs: list = PARSE_LANGS, output_format: str = PARSE_OUTPUT_FORMAT):
         """
         Args:
             langs: list of Stanza language codes, e.g. ["it", "de"]

@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 from ebooklib.epub import EpubImage
 from vllm import LLM, SamplingParams
+from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EVAL_N
 
 PROMPT = """Convert the following HTML to clean Markdown.
 Rules:
@@ -23,10 +24,10 @@ HTML:
 class EpubToMarkdownConverter:
     def __init__(
         self,
-        model_id: str = "Qwen/Qwen2.5-7B-Instruct",
-        max_chunk_chars: int = 8_000,
-        max_new_tokens: int = 2_048,
-        eval_n: int = 20,
+        model_id: str = TEXT_MODEL_ID,
+        max_chunk_chars: int = EPUB_MAX_CHUNK_CHARS,
+        max_new_tokens: int = EPUB_MAX_NEW_TOKENS,
+        eval_n: int = EVAL_N,
     ):
         self.max_chunk_chars = max_chunk_chars
         self.max_new_tokens = max_new_tokens

@@ -10,6 +10,7 @@ from pathlib import Path
 import fitz
 from pdf2image import convert_from_path
 from vllm import LLM, SamplingParams
+from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,10 @@ class PDFToMarkdownConverter:
 
     def __init__(
         self,
-        model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct",
-        dpi: int = 300,
-        max_new_tokens: int = 4096,
-        eval_n: int = 20,
+        model_id: str = PDF_MODEL_ID,
+        dpi: int = PDF_DPI,
+        max_new_tokens: int = PDF_MAX_NEW_TOKENS,
+        eval_n: int = EVAL_N,
     ) -> None:
         self.dpi = dpi
         self.max_new_tokens = max_new_tokens
