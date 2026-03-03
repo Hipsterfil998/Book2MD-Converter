@@ -7,18 +7,20 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 ## Project Structure
 
 ```
-├── config.py                      # Central configuration (models, paths, parameters)
+├── config.py                      # Central configuration: models, paths, parameters, prompts
+├── utils.py                       # Shared utilities (image encoding, stratified sampling)
 ├── book_converter.py              # Main pipeline orchestrator
 ├── converters/
-│   ├── text_extraction.py         # Rule-based PDF/EPUB → Markdown (no LLM)
-│   ├── pdf2md_LLM.py              # PDF → Markdown via Qwen2.5-VL (vision LLM)
-│   └── epub2md_LLM.py             # EPUB → Markdown via Qwen2.5 (text LLM)
+│   ├── text_extraction.py         # Rule-based PDF/EPUB -> Markdown (no LLM)
+│   ├── pdf2md_LLM.py              # PDF -> Markdown via Qwen2.5-VL (vision LLM)
+│   └── epub2md_LLM.py             # EPUB -> Markdown via Qwen2.5 (text LLM)
 ├── metadata/
 │   └── metadata_extractor.py      # Author/title/year/genre extraction
 ├── quality_evaluation/
 │   └── evaluator.py               # LLM-as-judge faithfulness evaluation
 ├── dependency_parsing/
 │   └── dependency_parsing.py      # Stanza-based dependency parsing
+├── test_data/                     # Place test PDF/EPUB files here
 └── requirements.txt
 ```
 
@@ -26,16 +28,16 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 
 ## Configuration
 
-All parameters are centralised in `config.py`. Edit this file before running on Colab — no need to touch individual modules.
+All parameters and prompts are centralised in `config.py`. Edit this file before running on Colab; no need to touch individual modules.
 
 ```python
 # Models
-PDF_MODEL_ID  = "Qwen/Qwen2.5-VL-7B-Instruct"  # vision-language (PDF → MD, PDF eval)
-TEXT_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"     # text-only (EPUB → MD, metadata)
+PDF_MODEL_ID  = "Qwen/Qwen2.5-VL-7B-Instruct"  # vision-language (PDF -> MD, PDF eval)
+TEXT_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"     # text-only (EPUB -> MD, metadata)
 
 # Generation
-PDF_MAX_NEW_TOKENS   = 4096
-EPUB_MAX_NEW_TOKENS  = 2_048
+PDF_MAX_NEW_TOKENS      = 4096
+EPUB_MAX_NEW_TOKENS     = 2_048
 METADATA_MAX_NEW_TOKENS = 128
 
 # Evaluation sampling
@@ -46,6 +48,8 @@ INPUT_DIR    = "books/"
 OUTPUT_DIR   = "output/"
 SCORES_DIR   = "scores/"
 METADATA_CSV = "metadata/metadata.csv"
+
+# Prompts (PDF_PROMPT, EPUB_PROMPT, PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT, BIBLIO_PROMPT, GENRE_PROMPT)
 ```
 
 Every constructor still accepts the same parameters explicitly, so individual overrides remain possible without editing the config.
@@ -111,8 +115,8 @@ extractor.run(
 ```
 
 Extracts per book:
-- **Author, title, year** — from front pages (title page, TOC, preface)
-- **Genre** — from body pages (main content)
+- **Author, title, year**: from front pages (title page, TOC, preface)
+- **Genre**: from body pages (main content)
 
 Genres: `Journalistic`, `Functional/Gebrauchstexte`, `Factual/Non fiction/Wissenschaft`, `Fiction/Belletristik`
 
@@ -213,4 +217,4 @@ During conversion, `eval_n=20` pages/chunks are sampled using stratified samplin
 | Body (middle 80%) | ~14 | Main text, tables, formulas |
 | Back (last 10%) | ~3 | Bibliography, index, appendices |
 
-The same sampled pages are reused for both metadata extraction (front → biblio, body -> genre) and quality evaluation: no reprocessing of original files required.
+The same sampled pages are reused for both metadata extraction (front -> biblio, body -> genre) and quality evaluation: no reprocessing of original files required.
