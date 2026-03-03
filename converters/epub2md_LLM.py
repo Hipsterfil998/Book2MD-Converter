@@ -6,19 +6,8 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 from ebooklib.epub import EpubImage
 from vllm import LLM, SamplingParams
-from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EVAL_N
+from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EVAL_N, EPUB_PROMPT
 from utils import sample_indices
-
-PROMPT = """Convert the following HTML to clean Markdown.
-Rules:
-- Preserve headings, lists, tables and code blocks.
-- when there are images convert them to markdown format ![](images/fig.png)
-- put the image flag exactly where it is located in the HTML
-- Output only the Markdown.
-
-HTML:
-{html}
-"""
 
 
 class EpubToMarkdownConverter:
@@ -87,7 +76,7 @@ class EpubToMarkdownConverter:
         html = self._rewrite_img_srcs(html, image_map)
 
         chunks = self._chunk(html)
-        messages = [[{"role": "user", "content": PROMPT.format(html=c)}] for c in chunks]
+        messages = [[{"role": "user", "content": EPUB_PROMPT.format(html=c)}] for c in chunks]
 
         sampling_params = SamplingParams(max_tokens=self.max_new_tokens, temperature=0.0)
         outputs = self.llm.chat(messages, sampling_params=sampling_params)

@@ -11,35 +11,7 @@ from pathlib import Path
 from PIL import Image
 from vllm import LLM, SamplingParams
 from utils import pil_to_data_url
-
-
-_PDF_JUDGE_PROMPT = (
-    "You are a faithfulness verifier for document conversion.\n\n"
-    "SOURCE DOCUMENT: the page image above.\n"
-    "GENERATED MARKDOWN: the text below.\n\n"
-    "Your task: verify that every piece of content in the Markdown can be "
-    "traced back to the source page. Do not evaluate markdown quality in general — "
-    "only check faithfulness to the original.\n\n"
-    "Rate from 1 (unfaithful) to 5 (perfectly faithful):\n"
-    "- text: all text from the source is present and nothing is invented\n"
-    "- structure: headings, tables, lists match the visual layout of the source\n"
-    "- math: formulas match the source (rate 5 if no math is present)\n\n"
-    'Return ONLY valid JSON: {"text": N, "structure": N, "math": N}\n\n'
-    "GENERATED MARKDOWN:\n"
-)
-
-_EPUB_JUDGE_PROMPT = (
-    "You are a faithfulness verifier for document conversion.\n\n"
-    "SOURCE DOCUMENT:\n{html}\n\n"
-    "GENERATED MARKDOWN:\n{markdown}\n\n"
-    "Your task: verify that every piece of content in the Markdown can be "
-    "traced back to the source HTML. Do not evaluate markdown quality in general — "
-    "only check faithfulness to the original.\n\n"
-    "Rate from 1 (unfaithful) to 5 (perfectly faithful):\n"
-    "- text: all text from the source is present and nothing is invented\n"
-    "- structure: headings, tables, lists match the source structure\n\n"
-    'Return ONLY valid JSON: {"text": N, "structure": N}'
-)
+from config import PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT
 
 
 class QualityEvaluator:
@@ -78,25 +50,17 @@ class QualityEvaluator:
         messages = [
             [{"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": pil_to_data_url(Image.open(pf))}},
-                {"type": "text", "text": _PDF_JUDGE_PROMPT + (pf.with_suffix(".md")).read_text(encoding="utf-8")},
+                {"type": "text", "text": PDF_JUDGE_PROMPT + (pf.with_suffix(".md")).read_text(encoding="utf-8")},
             ]}]
             for pf in page_files
         ]
         outputs = self.llm.chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
-
-        scores = {}
-        for pf, out in zip(page_files, outputs):
-            j = int(pf.stem)
-            try:
-                scores[j] = json.loads(out.outputs[0].text.strip())
-            except Exception:
-                scores[j] = {"text": None, "structure": None, "math": None}
-
-        result = self._build_result(scores, ("text", "structure", "math"), key="pages")
-        (scores_dir / (eval_pages_dir.parent.name + "_scores.json")).write_text(
-            json.dumps(result, indent=2), encoding="utf-8"
+        return self._collect_and_save(
+            page_files, outputs,
+            fallback={"text": None, "structure": None, "math": None},
+            dims=("text", "structure", "math"), key="pages",
+            eval_dir=eval_pages_dir, scores_dir=scores_dir,
         )
-        return result
 
     def evaluate_epub(
         self,
@@ -118,24 +82,31 @@ class QualityEvaluator:
         chunk_files = sorted(eval_chunks_dir.glob("*.html"), key=lambda p: int(p.stem))
 
         messages = [
-            [{"role": "user", "content": _EPUB_JUDGE_PROMPT.format(
+            [{"role": "user", "content": EPUB_JUDGE_PROMPT.format(
                 html=cf.read_text(encoding="utf-8"),
                 markdown=cf.with_suffix(".md").read_text(encoding="utf-8"),
             )}]
             for cf in chunk_files
         ]
         outputs = self.llm.chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
+        return self._collect_and_save(
+            chunk_files, outputs,
+            fallback={"text": None, "structure": None},
+            dims=("text", "structure"), key="chunks",
+            eval_dir=eval_chunks_dir, scores_dir=scores_dir,
+        )
 
+    def _collect_and_save(self, files, outputs, fallback, dims, key, eval_dir, scores_dir) -> dict:
+        """Parse LLM outputs, build result, and save scores JSON."""
         scores = {}
-        for cf, out in zip(chunk_files, outputs):
-            j = int(cf.stem)
+        for f, out in zip(files, outputs):
+            j = int(f.stem)
             try:
                 scores[j] = json.loads(out.outputs[0].text.strip())
             except Exception:
-                scores[j] = {"text": None, "structure": None}
-
-        result = self._build_result(scores, ("text", "structure"), key="chunks")
-        (scores_dir / (eval_chunks_dir.parent.name + "_scores.json")).write_text(
+                scores[j] = fallback
+        result = self._build_result(scores, dims, key=key)
+        (scores_dir / (eval_dir.parent.name + "_scores.json")).write_text(
             json.dumps(result, indent=2), encoding="utf-8"
         )
         return result

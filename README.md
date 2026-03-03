@@ -1,6 +1,6 @@
 # Book Conversion & Metadata Extraction Pipeline
 
-Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdown, extracting bibliographic metadata, and evaluating conversion quality — all via vLLM inference.
+Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdown, extracting bibliographic metadata, and evaluating conversion quality, all via vLLM inference.
 
 ---
 
@@ -75,7 +75,7 @@ Every constructor still accepts the same parameters explicitly, so individual ov
 | Qwen2.5-VL-7B-Instruct (PDF) | ~16 GB | A100 / L4 |
 | Qwen2.5-7B-Instruct (EPUB + metadata) | ~14 GB | T4 (tight) |
 
-Both models are never loaded simultaneously — the pipeline loads one at a time.
+Both models are never loaded simultaneously; the pipeline loads one at a time.
 
 ---
 
@@ -136,7 +136,7 @@ evaluator.evaluate_epub(
 )
 ```
 
-The judge receives the original page image (PDF) or HTML chunk (EPUB) paired with the generated Markdown, and rates **faithfulness** — not general quality. Any VL model can be used for PDF evaluation; a text model suffices for EPUB.
+The judge receives the original page image (PDF) or HTML chunk (EPUB) paired with the generated Markdown, and rates **faithfulness**, not general quality. Any VL model can be used for PDF evaluation; a text model suffices for EPUB.
 
 ---
 
@@ -213,4 +213,4 @@ During conversion, `eval_n=20` pages/chunks are sampled using stratified samplin
 | Body (middle 80%) | ~14 | Main text, tables, formulas |
 | Back (last 10%) | ~3 | Bibliography, index, appendices |
 
-The same sampled pages are reused for both metadata extraction (front → biblio, body → genre) and quality evaluation — no reprocessing of original files required.
+The same sampled pages are reused for both metadata extraction (front → biblio, body -> genre) and quality evaluation: no reprocessing of original files required.

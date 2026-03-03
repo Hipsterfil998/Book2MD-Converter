@@ -7,7 +7,7 @@ from pathlib import Path
 import fitz
 from pdf2image import convert_from_path
 from vllm import LLM, SamplingParams
-from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N
+from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N, PDF_PROMPT
 from utils import pil_to_data_url, sample_indices
 
 logger = logging.getLogger(__name__)
@@ -15,15 +15,6 @@ logger = logging.getLogger(__name__)
 
 class PDFToMarkdownConverter:
     """Converts PDF documents to Markdown using Qwen2.5-VL via vLLM."""
-
-    _PROMPT = """Convert this PDF page to Markdown.
-                Rules:
-                - Preserve heading hierarchy (# ## ###)
-                - Convert tables to Markdown tables
-                - Use $...$ for inline math, $$...$$ for block math
-                - Preserve lists and indentation
-                - Replace [IMAGE_N] placeholders with ![image_N](images/image_N.png)
-                - Output ONLY the Markdown, no commentary"""
 
     def __init__(
         self,
@@ -50,9 +41,9 @@ class PDFToMarkdownConverter:
 
         def make_prompt(fnames: list[str]) -> str:
             if not fnames:
-                return self._PROMPT
+                return PDF_PROMPT
             placeholders = "\n".join(f"[IMAGE_{i + 1}]" for i in range(len(fnames)))
-            return self._PROMPT + f"\n\nImages in order:\n{placeholders}"
+            return PDF_PROMPT + f"\n\nImages in order:\n{placeholders}"
 
         messages = [
             [{"role": "user", "content": [
