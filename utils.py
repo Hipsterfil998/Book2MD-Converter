@@ -72,20 +72,30 @@ def pil_to_data_url(img) -> str:
 
 
 def sample_indices(total: int, n: int = 20) -> list[int]:
-    """Stratified sampling across front / body / back of the document."""
+    """Sample page indices for evaluation.
+
+    The first min(10, n) pages are always included (metadata lives there).
+    Remaining slots are filled with stratified sampling from body and back.
+    """
     if total <= n:
         return list(range(total))
-    front = list(range(0, max(1, total // 10)))
-    back  = list(range(total - max(1, total // 10), total))
-    body  = list(range(len(front), total - len(back)))
-    n_front = max(1, n // 7)
-    n_back  = max(1, n // 7)
-    if n_front + n_back > n:          # guard for very small n
-        n_front = n // 2
-        n_back  = n - n_front
-    n_body = n - n_front - n_back
-    return sorted(
-        random.sample(front, min(n_front, len(front))) +
-        random.sample(body,  min(n_body,  len(body)))  +
-        random.sample(back,  min(n_back,  len(back)))
+
+    guaranteed = list(range(min(10, n, total)))
+    n_remaining = n - len(guaranteed)
+    remaining_pool = list(range(len(guaranteed), total))
+
+    if n_remaining <= 0 or not remaining_pool:
+        return sorted(guaranteed)
+
+    back_size = max(1, len(remaining_pool) // 9)   # ~10% of what's left
+    back = remaining_pool[-back_size:]
+    body = remaining_pool[:-back_size]
+
+    n_back = max(1, n_remaining // 4)
+    n_body = n_remaining - n_back
+
+    sampled = (
+        random.sample(body, min(n_body, len(body))) +
+        random.sample(back, min(n_back, len(back)))
     )
+    return sorted(guaranteed + sampled)

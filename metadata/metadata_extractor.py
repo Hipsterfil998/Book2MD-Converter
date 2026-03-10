@@ -39,12 +39,13 @@ class MetadataExtractor:
             md_files = sorted(eval_dir.glob("*.md"), key=lambda p: int(p.stem))
             if not md_files:
                 continue
-            front_files = md_files[:3]
-            body_files = md_files[3:-2] if len(md_files) > 5 else md_files[1:-1]
+            guaranteed = md_files[:10]   # first 10 pages are always sampled
+            front_files = guaranteed[:5]  # pages 0-4 → author/title/year
+            body_files  = guaranteed[5:][-3:]  # last 3 of guaranteed → genre
             samples.append({
                 "book_name": book_dir.name,
                 "front_text": "\n\n".join(f.read_text(encoding="utf-8") for f in front_files),
-                "body_text":  "\n\n".join(f.read_text(encoding="utf-8") for f in body_files[:2]),
+                "body_text":  "\n\n".join(f.read_text(encoding="utf-8") for f in body_files),
             })
         return samples
 

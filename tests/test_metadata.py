@@ -72,20 +72,35 @@ class TestCollectSamples:
         (tmp_path / "readme.txt").write_text("not a book")
         assert self._extractor().collect_samples(str(tmp_path)) == []
 
-    def test_front_text_uses_first_three_pages(self, tmp_path):
+    def test_front_text_uses_first_five_pages(self, tmp_path):
         eval_dir = tmp_path / "book" / "eval_pages"
         eval_dir.mkdir(parents=True)
-        for i in range(6):
+        for i in range(12):
             (eval_dir / f"{i}.md").write_text(f"page{i}", encoding="utf-8")
 
         samples = self._extractor().collect_samples(str(tmp_path))
         front = samples[0]["front_text"]
-        assert "page0" in front
-        assert "page1" in front
-        assert "page2" in front
-        assert "page3" not in front
+        for i in range(5):
+            assert f"page{i}" in front
+        assert "page5" not in front
 
-    def test_body_text_uses_middle_pages(self, tmp_path):
+    def test_body_text_uses_last_of_guaranteed_10(self, tmp_path):
+        eval_dir = tmp_path / "book" / "eval_pages"
+        eval_dir.mkdir(parents=True)
+        for i in range(12):
+            (eval_dir / f"{i}.md").write_text(f"page{i}", encoding="utf-8")
+
+        samples = self._extractor().collect_samples(str(tmp_path))
+        body = samples[0]["body_text"]
+        # guaranteed[:10] = [0..9], guaranteed[5:][-3:] = [7,8,9]
+        assert "page7" in body
+        assert "page8" in body
+        assert "page9" in body
+        assert "page10" not in body
+        assert "page0" not in body
+
+    def test_body_text_short_book(self, tmp_path):
+        """Books with fewer than 10 guaranteed pages: body = last 3 after the first 5."""
         eval_dir = tmp_path / "book" / "eval_pages"
         eval_dir.mkdir(parents=True)
         for i in range(8):
@@ -93,8 +108,11 @@ class TestCollectSamples:
 
         samples = self._extractor().collect_samples(str(tmp_path))
         body = samples[0]["body_text"]
-        # body_files = md_files[3:-2] = [3,4,5], body_text = first 2 = [3,4]
-        assert "page3" in body or "page4" in body
+        # guaranteed = [0..7], guaranteed[5:][-3:] = [5,6,7]
+        assert "page5" in body
+        assert "page6" in body
+        assert "page7" in body
+        assert "page0" not in body
 
     def test_multiple_books(self, tmp_path):
         for book in ("bookA", "bookB"):
