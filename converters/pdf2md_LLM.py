@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 import fitz
 from pdf2image import convert_from_path
-from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N, PDF_PROMPT  # sets VLLM_USE_V1 before vllm import
+from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N, PDF_PROMPT
 from vllm import LLM, SamplingParams
 from utils import pil_to_data_url, sample_indices, suppress_worker_stderr
 
@@ -104,14 +104,18 @@ class PDFToMarkdownConverter:
         for page in doc:
             for img in page.get_images(full=True):
                 xref = img[0]
-                if xref in content_xrefs and xref not in xref_to_fname:
-                    img_counter += 1
+                if xref not in content_xrefs or xref in xref_to_fname:
+                    continue
+                try:
                     pix = fitz.Pixmap(doc, xref)
                     if pix.colorspace and pix.colorspace.n > 3:  # CMYK or similar → RGB
                         pix = fitz.Pixmap(fitz.csRGB, pix)
-                    fname = f"img{img_counter}.png"
+                    fname = f"img{img_counter + 1}.png"
                     pix.save(str(img_dir / fname))
-                    xref_to_fname[xref] = fname
+                except Exception:
+                    continue  # skip images with unsupported colorspace
+                img_counter += 1
+                xref_to_fname[xref] = fname
 
         page_images: dict[int, list[str]] = {
             page_idx: [

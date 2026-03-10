@@ -1,12 +1,8 @@
 # config.py — Central configuration for the book conversion pipeline
 # Edit this file to change models, paths, and generation parameters.
 
-import os as _os
 import sys as _sys
 
-# Force vLLM v0 engine — v1 engine has multiprocessing issues in Colab
-# (CUDA is initialized before the engine workers start, causing spawn to fail)
-_os.environ.setdefault("VLLM_USE_V1", "0")
 
 class _StderrFilter:
     """Suppress known non-fatal protobuf/grpc compatibility tracebacks."""

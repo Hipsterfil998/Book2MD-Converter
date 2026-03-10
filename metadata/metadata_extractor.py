@@ -9,7 +9,7 @@ Uses pre-saved eval pages produced during conversion:
 import json
 import pandas as pd
 from pathlib import Path
-from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS, BIBLIO_PROMPT, GENRE_PROMPT  # sets VLLM_USE_V1 before vllm import
+from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS, BIBLIO_PROMPT, GENRE_PROMPT
 from vllm import LLM, SamplingParams
 from utils import suppress_worker_stderr
 
