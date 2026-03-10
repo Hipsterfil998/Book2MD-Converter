@@ -5,8 +5,8 @@ import pypandoc
 from bs4 import BeautifulSoup
 from ebooklib import epub
 from ebooklib.epub import EpubImage
+from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EVAL_N, EPUB_PROMPT  # sets VLLM_USE_V1 before vllm import
 from vllm import LLM, SamplingParams
-from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EVAL_N, EPUB_PROMPT
 from utils import sample_indices
 
 

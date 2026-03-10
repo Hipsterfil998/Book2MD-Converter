@@ -6,8 +6,8 @@ import logging
 from pathlib import Path
 import fitz
 from pdf2image import convert_from_path
+from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N, PDF_PROMPT  # sets VLLM_USE_V1 before vllm import
 from vllm import LLM, SamplingParams
-from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, EVAL_N, PDF_PROMPT
 from utils import pil_to_data_url, sample_indices
 
 logger = logging.getLogger(__name__)

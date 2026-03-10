@@ -9,9 +9,9 @@ import json
 from pathlib import Path
 
 from PIL import Image
+from config import PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT  # sets VLLM_USE_V1 before vllm import
 from vllm import LLM, SamplingParams
 from utils import pil_to_data_url
-from config import PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT
 
 
 class QualityEvaluator:

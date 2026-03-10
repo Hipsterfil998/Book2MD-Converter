@@ -9,8 +9,8 @@ Uses pre-saved eval pages produced during conversion:
 import json
 import pandas as pd
 from pathlib import Path
+from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS, BIBLIO_PROMPT, GENRE_PROMPT  # sets VLLM_USE_V1 before vllm import
 from vllm import LLM, SamplingParams
-from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS, BIBLIO_PROMPT, GENRE_PROMPT
 
 
 class MetadataExtractor:

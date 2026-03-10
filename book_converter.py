@@ -1,9 +1,9 @@
+from config import PDF_MODEL_ID, TEXT_MODEL_ID, INPUT_DIR, OUTPUT_DIR  # must be first: sets env vars before vllm is imported
 from pathlib import Path
 from tqdm import tqdm
 from converters.text_extraction import DocumentProcessor
 from converters.pdf2md_LLM import PDFToMarkdownConverter
 from converters.epub2md_LLM import EpubToMarkdownConverter
-from config import PDF_MODEL_ID, TEXT_MODEL_ID, INPUT_DIR, OUTPUT_DIR
 
 
 class ConverterPipeline:
