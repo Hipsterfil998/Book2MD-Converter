@@ -11,3 +11,4 @@ pillow
 markdown
 beautifulsoup4
 pypandoc
+qwen-vl-utils

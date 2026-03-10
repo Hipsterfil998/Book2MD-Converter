@@ -1,6 +1,21 @@
 # config.py — Central configuration for the book conversion pipeline
 # Edit this file to change models, paths, and generation parameters.
 
+import sys as _sys
+
+class _StderrFilter:
+    """Suppress known non-fatal protobuf/grpc compatibility tracebacks."""
+    _PATTERN = "'MessageFactory' object has no attribute 'GetPrototype'"
+
+    def __init__(self, wrapped): self._wrapped = wrapped
+    def write(self, msg):
+        if self._PATTERN not in msg:
+            self._wrapped.write(msg)
+    def flush(self): self._wrapped.flush()
+    def __getattr__(self, name): return getattr(self._wrapped, name)
+
+_sys.stderr = _StderrFilter(_sys.stderr)
+
 # ── Models ───────────────────────────────────────────────────────────────────
 PDF_MODEL_ID  = "Qwen/Qwen2.5-VL-7B-Instruct"  # vision-language (PDF → MD, PDF eval)
 TEXT_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"     # text-only (EPUB → MD, metadata)

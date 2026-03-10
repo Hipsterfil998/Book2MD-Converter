@@ -21,7 +21,10 @@ def sample_indices(total: int, n: int = 20) -> list[int]:
     body  = list(range(len(front), total - len(back)))
     n_front = max(1, n // 7)
     n_back  = max(1, n // 7)
-    n_body  = n - n_front - n_back
+    if n_front + n_back > n:          # guard for very small n
+        n_front = n // 2
+        n_back  = n - n_front
+    n_body = n - n_front - n_back
     return sorted(
         random.sample(front, min(n_front, len(front))) +
         random.sample(body,  min(n_body,  len(body)))  +

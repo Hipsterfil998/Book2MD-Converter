@@ -30,7 +30,7 @@ class ConverterPipeline:
 
         for filepath in tqdm(documents, desc="Converting", unit="file"):
             doc_output = Path(self.output_dir) / filepath.stem
-            if filepath.suffix == ".pdf":
+            if filepath.suffix.lower() == ".pdf":
                 processor.process_pdf(str(filepath), output_dir=doc_output)
             else:
                 processor.process_epub(str(filepath), output_dir=doc_output)

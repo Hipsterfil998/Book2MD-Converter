@@ -69,7 +69,6 @@ Every constructor still accepts the same parameters explicitly, so individual ov
 
 ```bash
 !pip install -r requirements.txt
-!pip install qwen-vl-utils          # required for Qwen2.5-VL image processing
 ```
 
 ### 3. GPU requirements

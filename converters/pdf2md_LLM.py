@@ -59,7 +59,8 @@ class PDFToMarkdownConverter:
         markdown_pages = []
         raw_texts = []
         for j, out in enumerate(outputs):
-            text = self._resolve_image_refs(out.outputs[0].text, page_images.get(j, []))
+            raw = self._clean(out.outputs[0].text)
+            text = self._resolve_image_refs(raw, page_images.get(j, []))
             raw_texts.append(text)
             markdown_pages.append(f"<!-- Page {j + 1} -->\n{text}")
 
@@ -78,20 +79,59 @@ class PDFToMarkdownConverter:
         return out_file
 
     def _extract_images(self, pdf_path: Path, img_dir: Path) -> dict[int, list[str]]:
-        """Extract embedded images from PDF. Returns page_idx → [filenames]."""
-        page_images: dict[int, list[str]] = {}
+        """Extract unique content images from PDF.
+
+        Deduplicates by xref and skips images that appear on > 30% of pages
+        (headers, footers, watermarks). Returns page_idx → [filenames].
+        """
         doc = fitz.open(str(pdf_path))
-        for page_idx, page in enumerate(doc):
-            page_images[page_idx] = []
-            for img_idx, img in enumerate(page.get_images(full=True)):
-                pix = fitz.Pixmap(doc, img[0])
-                if pix.n > 4:  # CMYK → RGB
-                    pix = fitz.Pixmap(fitz.csRGB, pix)
-                fname = f"page{page_idx + 1}_img{img_idx + 1}.png"
-                pix.save(str(img_dir / fname))
-                page_images[page_idx].append(fname)
+        n_pages = len(doc)
+
+        # Count how many distinct pages each xref appears on
+        xref_page_count: dict[int, int] = {}
+        for page in doc:
+            for xref in {img[0] for img in page.get_images(full=True)}:
+                xref_page_count[xref] = xref_page_count.get(xref, 0) + 1
+
+        # Exclude recurring decorative elements (headers / footers / watermarks)
+        max_pages = max(3, int(n_pages * 0.3))
+        content_xrefs = {xref for xref, c in xref_page_count.items() if c <= max_pages}
+
+        # Save each unique content image once
+        xref_to_fname: dict[int, str] = {}
+        img_counter = 0
+        for page in doc:
+            for img in page.get_images(full=True):
+                xref = img[0]
+                if xref in content_xrefs and xref not in xref_to_fname:
+                    img_counter += 1
+                    pix = fitz.Pixmap(doc, xref)
+                    if pix.n > 4:  # CMYK → RGB
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    fname = f"img{img_counter}.png"
+                    pix.save(str(img_dir / fname))
+                    xref_to_fname[xref] = fname
+
+        page_images: dict[int, list[str]] = {
+            page_idx: [
+                xref_to_fname[img[0]]
+                for img in page.get_images(full=True)
+                if img[0] in xref_to_fname
+            ]
+            for page_idx, page in enumerate(doc)
+        }
         doc.close()
         return page_images
+
+    @staticmethod
+    def _clean(text: str) -> str:
+        """Strip markdown code fences the model sometimes wraps output in."""
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+            text = "\n".join(lines[1:end]).strip()
+        return text
 
     @staticmethod
     def _resolve_image_refs(text: str, fnames: list[str]) -> str:
