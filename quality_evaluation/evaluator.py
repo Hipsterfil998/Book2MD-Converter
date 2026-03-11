@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from PIL import Image
-from config import PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT
+from config import PDF_JUDGE_PROMPT, EPUB_JUDGE_PROMPT, PDF_MODEL_ID, TEXT_MODEL_ID
 from vllm import LLM, SamplingParams
 from utils import pil_to_data_url, suppress_worker_stderr
 
@@ -16,13 +16,35 @@ from utils import pil_to_data_url, suppress_worker_stderr
 class QualityEvaluator:
     """Evaluates PDF/EPUB → Markdown quality using an LLM-as-judge.
 
+    Uses a vision-language model for PDF (image + Markdown pairs) and a
+    text-only model for EPUB (HTML + Markdown pairs). Both are loaded lazily
+    so that only the required model occupies VRAM.
+
     Reads pre-saved eval_pages/ (PNG) and eval_chunks/ (HTML) folders
     produced during conversion — no access to original files required.
     """
 
-    def __init__(self, judge_model_id: str):
-        with suppress_worker_stderr():
-            self.llm = LLM(model=judge_model_id, dtype="bfloat16")
+    def __init__(
+        self,
+        pdf_judge_model_id: str = PDF_MODEL_ID,
+        epub_judge_model_id: str = TEXT_MODEL_ID,
+    ):
+        self.pdf_judge_model_id = pdf_judge_model_id
+        self.epub_judge_model_id = epub_judge_model_id
+        self._pdf_llm: LLM | None = None
+        self._epub_llm: LLM | None = None
+
+    def _get_pdf_llm(self) -> LLM:
+        if self._pdf_llm is None:
+            with suppress_worker_stderr():
+                self._pdf_llm = LLM(model=self.pdf_judge_model_id, dtype="bfloat16")
+        return self._pdf_llm
+
+    def _get_epub_llm(self) -> LLM:
+        if self._epub_llm is None:
+            with suppress_worker_stderr():
+                self._epub_llm = LLM(model=self.epub_judge_model_id, dtype="bfloat16")
+        return self._epub_llm
 
     def evaluate_pdf(self, eval_pages_dir: str | Path, scores_dir: str | Path) -> dict:
         """Evaluate a PDF → Markdown conversion.
@@ -41,7 +63,7 @@ class QualityEvaluator:
             ]}]
             for pf in page_files
         ]
-        outputs = self.llm.chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
+        outputs = self._get_pdf_llm().chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
 
         fallback = {"text": None, "structure": None, "math": None}
         scores = {}
@@ -74,7 +96,7 @@ class QualityEvaluator:
             )}]
             for cf in chunk_files
         ]
-        outputs = self.llm.chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
+        outputs = self._get_epub_llm().chat(messages, SamplingParams(max_tokens=64, temperature=0.0))
 
         fallback = {"text": None, "structure": None}
         scores = {}
@@ -89,6 +111,36 @@ class QualityEvaluator:
             json.dumps(result, indent=2), encoding="utf-8"
         )
         return result
+
+    def evaluate_all(self, output_dir: str | Path, scores_dir: str | Path) -> dict:
+        """Evaluate all converted books found in output_dir.
+
+        Detects conversion type per book (eval_pages/ = PDF, eval_chunks/ = EPUB).
+        Processes all PDFs first, then all EPUBs, so each model is loaded once
+        and the two models are not in VRAM simultaneously.
+
+        Returns a dict mapping book name to its scores.
+        """
+        output_dir, scores_dir = Path(output_dir), Path(scores_dir)
+        results = {}
+
+        book_dirs = sorted(d for d in output_dir.iterdir() if d.is_dir())
+        pdf_dirs  = [d for d in book_dirs if (d / "eval_pages").exists()]
+        epub_dirs = [d for d in book_dirs if (d / "eval_chunks").exists()]
+        skipped   = [d for d in book_dirs if d not in pdf_dirs and d not in epub_dirs]
+
+        for d in skipped:
+            print(f"Skipping (no eval data): {d.name}")
+
+        for d in pdf_dirs:
+            print(f"Evaluating PDF: {d.name}")
+            results[d.name] = self.evaluate_pdf(d / "eval_pages", scores_dir)
+
+        for d in epub_dirs:
+            print(f"Evaluating EPUB: {d.name}")
+            results[d.name] = self.evaluate_epub(d / "eval_chunks", scores_dir)
+
+        return results
 
     @staticmethod
     def _build_result(scores: dict, dims: tuple, key: str) -> dict:
