@@ -31,9 +31,13 @@ class DependencyParser:
         self.pipelines = {}
 
     def _md_to_txt(self, md_text: str) -> str:
-        """Convert Markdown to plain text."""
-        html = markdown.markdown(md_text)
-        return BeautifulSoup(html, "html.parser").get_text(separator="\n")
+        """Convert Markdown to plain text, stripping table pipe characters."""
+        html = markdown.markdown(md_text, extensions=["tables"])
+        text = BeautifulSoup(html, "html.parser").get_text(separator="\n")
+        return "\n".join(
+            line for line in text.splitlines()
+            if line.strip() and line.strip() != "|"
+        )
 
     def _detect_lang(self, text: str) -> str:
         """Detect the language of text, returning a Stanza language code.
