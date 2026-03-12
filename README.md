@@ -34,8 +34,8 @@ All parameters and prompts are centralised in `config.py`. Edit this file before
 
 ```python
 # Models
-PDF_MODEL_ID  = "Qwen/Qwen2.5-VL-7B-Instruct"  # vision-language (PDF -> Markdown)
-TEXT_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"     # text-only (EPUB -> Markdown, metadata)
+PDF_MODEL_ID  = "Qwen/Qwen3-VL-4B-Instruct"  # vision-language (PDF -> Markdown)
+TEXT_MODEL_ID = "Qwen/Qwen3-4B"              # text-only (EPUB -> Markdown, metadata)
 
 # Generation
 PDF_MAX_NEW_TOKENS      = 4096
@@ -64,7 +64,6 @@ Every constructor still accepts the same parameters explicitly, so individual ov
 
 ```bash
 !apt-get install -y poppler-utils   # required by pdf2image (PDF rasterization)
-!apt-get install -y pandoc          # required by pypandoc (EPUB conversion)
 ```
 
 ### 2. Python dependencies
@@ -77,8 +76,8 @@ Every constructor still accepts the same parameters explicitly, so individual ov
 
 | Model | VRAM (bfloat16) | Recommended |
 |---|---|---|
-| Qwen2.5-VL-7B-Instruct (PDF) | ~16 GB | A100 / L4 |
-| Qwen2.5-7B-Instruct (EPUB + metadata) | ~14 GB | T4 (tight) |
+| Qwen3-VL-4B-Instruct (PDF) | ~10 GB | A100 / L4 / T4 |
+| Qwen3-4B (EPUB + metadata) | ~8 GB | T4 |
 
 Both models are never loaded simultaneously; the pipeline loads one at a time.
 
@@ -96,8 +95,8 @@ from book_converter import ConverterPipeline
 pipeline = ConverterPipeline(
     input_dir="books/",
     output_dir="output/",
-    # pdf_model_id="Qwen/Qwen2.5-VL-7B-Instruct",   # default
-    # text_model_id="Qwen/Qwen2.5-7B-Instruct",      # default
+    # pdf_model_id="Qwen/Qwen3-VL-4B-Instruct",   # default
+    # text_model_id="Qwen/Qwen3-4B",              # default
 )
 
 pipeline.run_pdf_llm()    # converts all .pdf files
@@ -232,8 +231,8 @@ Stanza models are downloaded automatically on first run (~500 MB per language).
 
 ## Markdown Format
 
-- **PDF**: pages separated by `\n\n---\n\n`, each with a `<!-- Page N -->` header
-- **EPUB**: chunks separated by `\n\n---\n\n`
+- **PDF**: pages separated by `\n\n`, each with a `<!-- Page N -->` header; blank pages are automatically skipped
+- **EPUB**: chunks separated by `\n\n`
 
 ---
 
