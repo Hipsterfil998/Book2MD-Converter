@@ -8,10 +8,11 @@ from ebooklib import epub
 from ebooklib.epub import EpubImage
 from config import TEXT_MODEL_ID, EPUB_MAX_CHUNK_CHARS, EPUB_MAX_NEW_TOKENS, EPUB_REPETITION_PENALTY, EVAL_N, EPUB_PROMPT, ENABLE_PREFIX_CACHING
 from vllm import LLM, SamplingParams
-from utils import sample_indices, suppress_worker_stderr
+from utils import sample_indices, suppress_worker_stderr, truncate_repetitions
 
 # Filenames that indicate a navigation / TOC document — skip these during conversion
 _TOC_FILENAME_RE = re.compile(r"(toc|nav|contents|index|ncx)", re.IGNORECASE)
+
 
 
 class EpubToMarkdownConverter:
@@ -73,7 +74,7 @@ class EpubToMarkdownConverter:
                 continue
             skip_next_blank = False
             cleaned.append(line)
-        return "\n".join(cleaned).strip()
+        return truncate_repetitions("\n".join(cleaned).strip())
 
     def _chunk(self, html: str) -> list[str]:
         """Split a chapter HTML into chunks by block-level tags inside <body>."""

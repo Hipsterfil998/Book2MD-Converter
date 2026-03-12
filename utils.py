@@ -65,6 +65,25 @@ def suppress_worker_stderr():
         t.join(timeout=5)
 
 
+def truncate_repetitions(text: str, min_len: int = 25, window: int = 6) -> str:
+    """Truncate LLM output at the first detected line-level repetition loop.
+
+    Scans lines in order; if a non-trivial line (>= min_len chars) reappears
+    within `window` lines of its previous occurrence, the text is cut right
+    after the first occurrence of that line.
+    """
+    lines = text.split("\n")
+    last_seen: dict[str, int] = {}
+    for i, line in enumerate(lines):
+        key = line.strip()
+        if len(key) < min_len:
+            continue
+        if key in last_seen and i - last_seen[key] <= window:
+            return "\n".join(lines[: last_seen[key] + 1]).rstrip()
+        last_seen[key] = i
+    return text
+
+
 def pil_to_data_url(img, max_side: int = 1024, jpeg_quality: int = 85) -> str:
     """Encode a PIL image as a base64 JPEG data URL for vLLM multimodal input.
 

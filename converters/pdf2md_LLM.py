@@ -8,7 +8,7 @@ import fitz
 from pdf2image import convert_from_path
 from config import PDF_MODEL_ID, PDF_DPI, PDF_MAX_NEW_TOKENS, PDF_REPETITION_PENALTY, EVAL_N, PDF_PROMPT, ENABLE_PREFIX_CACHING
 from vllm import LLM, SamplingParams
-from utils import pil_to_data_url, sample_indices, suppress_worker_stderr
+from utils import pil_to_data_url, sample_indices, suppress_worker_stderr, truncate_repetitions
 
 logger = logging.getLogger(__name__)
 
@@ -157,13 +157,13 @@ class PDFToMarkdownConverter:
 
     @staticmethod
     def _clean(text: str) -> str:
-        """Strip markdown code fences the model sometimes wraps output in."""
+        """Strip markdown code fences and truncate repetition loops."""
         text = text.strip()
         if text.startswith("```"):
             lines = text.split("\n")
             end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
             text = "\n".join(lines[1:end]).strip()
-        return text
+        return truncate_repetitions(text)
 
     @staticmethod
     def _resolve_image_refs(text: str, fnames: list[str]) -> str:
