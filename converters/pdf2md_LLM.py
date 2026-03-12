@@ -41,6 +41,12 @@ class PDFToMarkdownConverter:
         pages = convert_from_path(str(pdf_path), dpi=self.dpi)
         page_images = self._extract_images(pdf_path, img_dir)
 
+        # Filter blank pages before sending to the LLM
+        non_blank = [(j, img) for j, img in enumerate(pages) if not self._is_blank(img)]
+        skipped = len(pages) - len(non_blank)
+        if skipped:
+            logger.info("Skipped %d blank page(s)", skipped)
+
         def make_prompt(fnames: list[str]) -> str:
             if not fnames:
                 return PDF_PROMPT
@@ -52,19 +58,19 @@ class PDFToMarkdownConverter:
                 {"type": "image_url", "image_url": {"url": pil_to_data_url(img)}},
                 {"type": "text", "text": make_prompt(page_images.get(j, []))},
             ]}]
-            for j, img in enumerate(pages)
+            for j, img in non_blank
         ]
 
         sampling_params = SamplingParams(max_tokens=self.max_new_tokens, temperature=0.0)
         outputs = self.llm.chat(messages, sampling_params=sampling_params,
                                 chat_template_kwargs={"enable_thinking": False})
 
+        raw_texts: dict[int, str] = {}
         markdown_pages = []
-        raw_texts = []
-        for j, out in enumerate(outputs):
+        for (j, _), out in zip(non_blank, outputs):
             raw = self._clean(out.outputs[0].text)
             text = self._resolve_image_refs(raw, page_images.get(j, []))
-            raw_texts.append(text)
+            raw_texts[j] = text
             markdown_pages.append(f"<!-- Page {j + 1} -->\n{text}")
 
         out_file = output_dir / (pdf_path.stem + ".md")
@@ -74,10 +80,12 @@ class PDFToMarkdownConverter:
         # Save sampled Markdown pairs for later evaluation.
         # {j}.ref.md: PDF text layer via PyMuPDF Markdown export (no image, no LLM).
         # {j}.md:     LLM-generated Markdown for the same page.
+        # Blank pages are excluded from sampling.
         eval_dir = output_dir / "eval_pages"
         eval_dir.mkdir(exist_ok=True)
+        non_blank_indices = [j for j, _ in non_blank]
         doc_ref = fitz.open(str(pdf_path))
-        for j in sample_indices(len(pages), self.eval_n):
+        for j in sample_indices(len(non_blank_indices), self.eval_n, indices=non_blank_indices):
             (eval_dir / f"{j}.md").write_text(raw_texts[j], encoding="utf-8")
             try:
                 ref_md = doc_ref[j].get_text("markdown").strip()
@@ -137,6 +145,14 @@ class PDFToMarkdownConverter:
         }
         doc.close()
         return page_images
+
+    @staticmethod
+    def _is_blank(img, white_threshold: int = 240, max_dark_ratio: float = 0.001) -> bool:
+        """Return True only if the page is completely white (< 0.1% non-white pixels)."""
+        gray = img.convert("L")
+        pixels = gray.getdata()
+        dark = sum(1 for p in pixels if p < white_threshold)
+        return dark / len(pixels) < max_dark_ratio
 
     @staticmethod
     def _clean(text: str) -> str:

@@ -1,7 +1,7 @@
-"""epub_converter.py — EPUB → Markdown via pypandoc + vLLM."""
+"""epub_converter.py — EPUB → Markdown via ebooklib + vLLM."""
 
 from pathlib import Path
-import pypandoc
+import ebooklib
 from bs4 import BeautifulSoup
 from ebooklib import epub
 from ebooklib.epub import EpubImage
@@ -26,11 +26,12 @@ class EpubToMarkdownConverter:
                            enable_prefix_caching=ENABLE_PREFIX_CACHING)
 
     def _chunk(self, html: str) -> list[str]:
-        """Split HTML into chunks by top-level block tags."""
+        """Split a chapter HTML into chunks by block-level tags inside <body>."""
         soup = BeautifulSoup(html, "html.parser")
-        blocks = soup.find_all(["section", "article", "div"], recursive=False)
+        root = soup.find("body") or soup
+        blocks = root.find_all(["section", "article", "div"], recursive=False)
         if not blocks:
-            blocks = soup.find_all(True, recursive=False)
+            blocks = root.find_all(True, recursive=False)
 
         chunks, current = [], ""
         for block in blocks:
@@ -43,7 +44,7 @@ class EpubToMarkdownConverter:
                 current += text
         if current:
             chunks.append(current)
-        return chunks
+        return chunks or [str(root)]
 
     def _extract_images(self, epub_path: str, images_dir: Path) -> dict[str, Path]:
         """Extract all images from EPUB to images_dir. Returns {epub_src: local_path}."""
@@ -74,10 +75,20 @@ class EpubToMarkdownConverter:
         images_dir = output.parent / "images"
 
         image_map = self._extract_images(epub_path, images_dir)
-        html = pypandoc.convert_file(epub_path, "html")
-        html = self._rewrite_img_srcs(html, image_map)
 
-        chunks = self._chunk(html)
+        # Iterate chapters in spine order using ebooklib directly.
+        # This avoids collapsing the whole EPUB into one giant HTML string
+        # (which caused pypandoc's output to be chunked as a single oversized block).
+        book = epub.read_epub(epub_path)
+        spine_ids = [item_id for item_id, _ in book.spine]
+        chunks = []
+        for item_id in spine_ids:
+            item = book.get_item_with_id(item_id)
+            if item is None or item.get_type() != ebooklib.ITEM_DOCUMENT:
+                continue
+            chapter_html = item.get_content().decode("utf-8", errors="replace")
+            chapter_html = self._rewrite_img_srcs(chapter_html, image_map)
+            chunks.extend(self._chunk(chapter_html))
         messages = [[{"role": "user", "content": EPUB_PROMPT.format(html=c)}] for c in chunks]
 
         sampling_params = SamplingParams(max_tokens=self.max_new_tokens, temperature=0.0)

@@ -71,18 +71,24 @@ def pil_to_data_url(img) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-def sample_indices(total: int, n: int = 20) -> list[int]:
+def sample_indices(total: int, n: int = 20, indices: list[int] | None = None) -> list[int]:
     """Sample page indices for evaluation.
 
     The first min(10, n) pages are always included (metadata lives there).
     Remaining slots are filled with stratified sampling from body and back.
-    """
-    if total <= n:
-        return list(range(total))
 
-    guaranteed = list(range(min(10, n, total)))
+    If *indices* is provided it is used as the pool instead of range(total),
+    allowing blank pages to be excluded from sampling.
+    """
+    pool = indices if indices is not None else list(range(total))
+    total = len(pool)
+
+    if total <= n:
+        return list(pool)
+
+    guaranteed = pool[:min(10, n, total)]
     n_remaining = n - len(guaranteed)
-    remaining_pool = list(range(len(guaranteed), total))
+    remaining_pool = pool[len(guaranteed):]
 
     if n_remaining <= 0 or not remaining_pool:
         return sorted(guaranteed)
