@@ -67,34 +67,6 @@ HTML:
 # ── Evaluation sampling ───────────────────────────────────────────────────────
 EVAL_N = 20  # pages/chunks sampled per book for quality evaluation
 
-PDF_JUDGE_PROMPT = (
-    "You are a faithfulness verifier for document conversion.\n\n"
-    "SOURCE DOCUMENT: the page image above.\n"
-    "GENERATED MARKDOWN: the text below.\n\n"
-    "Your task: verify that every piece of content in the Markdown can be "
-    "traced back to the source page. Do not evaluate markdown quality in general — "
-    "only check faithfulness to the original.\n\n"
-    "Rate from 1 (unfaithful) to 5 (perfectly faithful):\n"
-    "- text: all text from the source is present and nothing is invented\n"
-    "- structure: headings, tables, lists match the visual layout of the source\n"
-    "- math: formulas match the source (rate 5 if no math is present)\n\n"
-    'Return ONLY valid JSON: {"text": N, "structure": N, "math": N}\n\n'
-    "GENERATED MARKDOWN:\n"
-)
-
-EPUB_JUDGE_PROMPT = (
-    "You are a faithfulness verifier for document conversion.\n\n"
-    "SOURCE DOCUMENT:\n{html}\n\n"
-    "GENERATED MARKDOWN:\n{markdown}\n\n"
-    "Your task: verify that every piece of content in the Markdown can be "
-    "traced back to the source HTML. Do not evaluate markdown quality in general — "
-    "only check faithfulness to the original.\n\n"
-    "Rate from 1 (unfaithful) to 5 (perfectly faithful):\n"
-    "- text: all text from the source is present and nothing is invented\n"
-    "- structure: headings, tables, lists match the source structure\n\n"
-    'Return ONLY valid JSON: {"text": N, "structure": N}'
-)
-
 # ── Metadata extraction ───────────────────────────────────────────────────────
 METADATA_MAX_NEW_TOKENS = 128
 
