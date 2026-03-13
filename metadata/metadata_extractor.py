@@ -36,7 +36,10 @@ class MetadataExtractor:
                 eval_dir = book_dir / "eval_chunks"
             if not eval_dir.exists():
                 continue
-            md_files = sorted(eval_dir.glob("*.md"), key=lambda p: int(p.stem))
+            md_files = sorted(
+                [p for p in eval_dir.glob("*.md") if not p.name.endswith(".ref.md")],
+                key=lambda p: int(p.stem),
+            )
             if not md_files:
                 continue
             guaranteed = md_files[:10]   # first 10 pages are always sampled
