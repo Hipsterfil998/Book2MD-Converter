@@ -108,8 +108,8 @@ from book2md import ConverterPipeline
 pipeline = ConverterPipeline(
     input_dir="books/",
     output_dir="output/",
-    pdf_model_id="Qwen/Qwen3-VL-7B-Instruct",   # override model
-    text_model_id="Qwen/Qwen3-8B",
+    pdf_model_id="Qwen/Qwen3-VL-4B-Instruct",   # default; override if needed
+    text_model_id="Qwen/Qwen3-4B",
 )
 pipeline.run_pdf_llm()
 ```
