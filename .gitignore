@@ -1,7 +1,7 @@
 # Output directories (generated at runtime)
 output/
 scores/
-metadata/
+/metadata/
 parsed/
 
 # Python cache
