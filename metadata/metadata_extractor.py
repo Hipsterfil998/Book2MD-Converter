@@ -5,7 +5,9 @@ Uses pre-saved eval pages produced during conversion:
   - Body pages (middle indices)  → genre
 """
 
+import gc
 import json
+import torch
 import pandas as pd
 from pathlib import Path
 from config import TEXT_MODEL_ID, METADATA_MAX_NEW_TOKENS, BIBLIO_PROMPT, GENRE_PROMPT, ENABLE_PREFIX_CACHING
@@ -129,4 +131,9 @@ class MetadataExtractor:
 
         df.to_csv(output_csv, index=False, encoding="utf-8")
         print(f"Saved {len(df)} records to {output_csv}")
+
+        del self.llm
+        gc.collect()
+        torch.cuda.empty_cache()
+
         return df

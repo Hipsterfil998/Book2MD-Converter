@@ -6,7 +6,9 @@ Each book is processed as a single file. Language is detected automatically
 from the text content; only the matching Stanza pipeline is used.
 """
 
+import gc
 import json
+import torch
 from pathlib import Path
 import markdown
 from bs4 import BeautifulSoup
@@ -158,3 +160,7 @@ class DependencyParser:
                 print(f"  -> {out}")
 
         print("\nDone.")
+
+        self.pipelines.clear()
+        gc.collect()
+        torch.cuda.empty_cache()

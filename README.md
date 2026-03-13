@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/logo.svg" alt="BookConverter logo" width="320"/>
+
 # Book Conversion & Metadata Extraction Pipeline
 
 </div>

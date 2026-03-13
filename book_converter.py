@@ -1,3 +1,5 @@
+import gc
+import torch
 from config import PDF_MODEL_ID, TEXT_MODEL_ID, INPUT_DIR, OUTPUT_DIR
 from pathlib import Path
 from tqdm import tqdm
@@ -55,6 +57,10 @@ class ConverterPipeline:
             doc_output.mkdir(parents=True, exist_ok=True)
             converter.convert(pdf_path, output_dir=doc_output)
 
+        del converter
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def run_epub_llm(self) -> None:
         """Convert all EPUBs using EpubToMarkdownConverter (LLM)."""
         converter = EpubToMarkdownConverter(model_id=self.text_model_id)
@@ -68,3 +74,7 @@ class ConverterPipeline:
             doc_output_dir.mkdir(parents=True, exist_ok=True)
             doc_output_md = doc_output_dir / (epub_path.stem + ".md")
             converter.convert(epub_path, output_path=str(doc_output_md))
+
+        del converter
+        gc.collect()
+        torch.cuda.empty_cache()

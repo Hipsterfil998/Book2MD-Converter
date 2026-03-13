@@ -16,8 +16,10 @@ Requires Page2MDBench to be cloned at <project_root>/Page2MDBench/:
   git clone https://github.com/Hipsterfil998/Page2MDBench.git
 """
 
+import gc
 import json
 import sys
+import torch
 from pathlib import Path
 
 def _import_metrics():
@@ -123,6 +125,12 @@ class QualityEvaluator:
         for d in epub_dirs:
             print(f"Evaluating EPUB: {d.name}")
             results[d.name] = self.evaluate_epub(d / "eval_chunks", scores_dir)
+
+        if self.use_bertscore:
+            del self.bert
+            self.bert = None
+            gc.collect()
+            torch.cuda.empty_cache()
 
         return results
 
