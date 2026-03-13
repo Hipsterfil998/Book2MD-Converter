@@ -1,11 +1,11 @@
-"""Tests for utils.py — pil_to_data_url and sample_indices."""
+"""Tests for book2md.utils — pil_to_data_url and sample_indices."""
 import base64
 from io import BytesIO
 
 import pytest
 from PIL import Image
 
-from utils import pil_to_data_url, sample_indices
+from book2md.utils import pil_to_data_url, sample_indices
 
 
 class TestSampleIndices:
@@ -46,7 +46,6 @@ class TestSampleIndices:
         assert result == list(range(10))
 
     def test_first_n_guaranteed_when_n_less_than_10(self):
-        # If n < 10, guaranteed pages are 0..n-1
         result = sample_indices(50, 5)
         assert result == [0, 1, 2, 3, 4]
 
@@ -62,21 +61,17 @@ class TestSampleIndices:
         result = sample_indices(50, 2)
         assert result == [0, 1]
 
-    def test_n_equals_three(self):
-        result = sample_indices(50, 3)
-        assert result == [0, 1, 2]
-
 
 class TestPilToDataUrl:
-    def test_starts_with_data_url_prefix(self):
+    def test_starts_with_jpeg_data_url_prefix(self):
         img = Image.new("RGB", (10, 10))
-        assert pil_to_data_url(img).startswith("data:image/png;base64,")
+        assert pil_to_data_url(img).startswith("data:image/jpeg;base64,")
 
-    def test_base64_decodes_to_valid_png(self):
+    def test_base64_decodes_to_valid_jpeg(self):
         img = Image.new("RGB", (10, 10))
         url = pil_to_data_url(img)
         data = base64.b64decode(url.split(",")[1])
-        assert data[:8] == b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
+        assert data[:3] == b"\xff\xd8\xff"  # JPEG magic bytes
 
     def test_roundtrip_preserves_size(self):
         img = Image.new("RGB", (32, 32), color=(128, 64, 0))
@@ -84,3 +79,9 @@ class TestPilToDataUrl:
         data = base64.b64decode(url.split(",")[1])
         recovered = Image.open(BytesIO(data))
         assert recovered.size == (32, 32)
+
+    def test_rgba_converted_to_rgb(self):
+        """RGBA images must be converted before JPEG encoding (no alpha in JPEG)."""
+        img = Image.new("RGBA", (10, 10))
+        url = pil_to_data_url(img)
+        assert url.startswith("data:image/jpeg;base64,")

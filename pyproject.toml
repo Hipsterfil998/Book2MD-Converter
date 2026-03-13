@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "book2md"
+version = "0.1.0"
+description = "PDF/EPUB to Markdown conversion pipeline using vLLM and Qwen3"
+requires-python = ">=3.10"
+
+[project.scripts]
+book2md = "book2md.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["book2md*"]

@@ -21,13 +21,17 @@ import json
 import sys
 import torch
 from pathlib import Path
+from book2md.base import PipelineStep
+
 
 def _import_metrics():
+    eval_dir = Path(__file__).parent
+    sys.path.insert(0, str(eval_dir))
     try:
         from metrics import NED, BLEU, MarkdownStructureF1, BERTScore
         return NED, BLEU, MarkdownStructureF1, BERTScore
     except ImportError:
-        bench = Path(__file__).parent.parent / "Page2MDBench"
+        bench = eval_dir.parent.parent.parent / "Page2MDBench"
         if bench.exists():
             sys.path.insert(0, str(bench))
             from metrics import NED, BLEU, MarkdownStructureF1, BERTScore
@@ -41,7 +45,7 @@ def _import_metrics():
 NED, BLEU, MarkdownStructureF1, BERTScore = _import_metrics()
 
 
-class QualityEvaluator:
+class QualityEvaluator(PipelineStep):
     """Evaluates PDF/EPUB to Markdown quality using reference-based metrics.
 
     PDF:  reference = rule-based Markdown ({i}.ref.md) saved during conversion.
@@ -102,6 +106,9 @@ class QualityEvaluator:
             json.dumps(result, indent=2), encoding="utf-8"
         )
         return result
+
+    def run(self, output_dir: str | Path, scores_dir: str | Path) -> dict:
+        return self.evaluate_all(output_dir, scores_dir)
 
     def evaluate_all(self, output_dir: str | Path, scores_dir: str | Path) -> dict:
         """Evaluate all converted books found in output_dir.

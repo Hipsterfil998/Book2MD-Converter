@@ -1,4 +1,4 @@
-"""Shared utilities for the book conversion pipeline."""
+"""Shared utilities for the book2md pipeline."""
 
 import base64
 import contextlib

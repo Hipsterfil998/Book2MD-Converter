@@ -405,14 +405,14 @@
     <li class="section-title">Modules</li>
     <li><a href="#config"><span class="nav-dot"></span>config.py</a></li>
     <li><a href="#utils"><span class="nav-dot"></span>utils.py</a></li>
-    <li><a href="#orchestrator"><span class="nav-dot"></span>book_converter.py / CLI</a></li>
-    <li><a href="#rule-based"><span class="nav-dot"></span>text_extraction.py</a></li>
-    <li><a href="#pdf-llm"><span class="nav-dot"></span>pdf2md_LLM.py</a></li>
-    <li><a href="#epub-llm"><span class="nav-dot"></span>epub2md_LLM.py</a></li>
-    <li><a href="#metadata"><span class="nav-dot"></span>metadata_extractor.py</a></li>
-    <li><a href="#evaluator"><span class="nav-dot"></span>evaluator.py</a></li>
+    <li><a href="#orchestrator"><span class="nav-dot"></span>pipeline.py / CLI</a></li>
+    <li><a href="#rule-based"><span class="nav-dot"></span>converters/text.py</a></li>
+    <li><a href="#pdf-llm"><span class="nav-dot"></span>converters/pdf.py</a></li>
+    <li><a href="#epub-llm"><span class="nav-dot"></span>converters/epub.py</a></li>
+    <li><a href="#metadata"><span class="nav-dot"></span>metadata/extractor.py</a></li>
+    <li><a href="#evaluator"><span class="nav-dot"></span>evaluation/evaluator.py</a></li>
     <li><a href="#evaluate-all"><span class="nav-dot"></span>evaluate_all()</a></li>
-    <li><a href="#parser"><span class="nav-dot"></span>dependency_parsing.py</a></li>
+    <li><a href="#parser"><span class="nav-dot"></span>parsing/parser.py</a></li>
 
     <li class="section-title">Reference</li>
     <li><a href="#decisions"><span class="nav-dot"></span>Architectural Decisions</a></li>
@@ -449,8 +449,8 @@
   <p>
     The pipeline converts books in PDF and EPUB format into structured Markdown, extracts
     bibliographic and genre metadata, evaluates conversion quality, and produces dependency
-    parsing annotations. Everything is orchestrated by a single central class
-    (<code>ConverterPipeline</code>) and configured through a single <code>config.py</code> file.
+    parsing annotations. Everything is packaged as an installable Python library (<code>pip install -e .</code>),
+    exposing a clean public API and a <code>book2md</code> CLI command usable from any directory.
   </p>
 
   <!-- Project Structure -->
@@ -462,47 +462,53 @@
       <span class="dot dot-green"></span>
       directory tree
     </div>
-    <pre><code>.
-├── config.py                        # Central configuration
-├── book_converter.py                # Pipeline orchestrator
-├── utils.py                         # Shared utilities
-│
-├── converters/
-│   ├── text_extraction.py           # Rule-based conversion (no LLM)
-│   ├── pdf2md_LLM.py                # PDF to Markdown via Qwen3-VL
-│   └── epub2md_LLM.py               # EPUB to Markdown via Qwen3
-│
-├── metadata/
-│   └── metadata_extractor.py        # Author / title / year / genre extraction
-│
-├── quality_evaluation/
-│   └── evaluator.py                 # Reference-based quality evaluation (NED, BLEU, MarkdownStructureF1)
-│
-├── dependency_parsing/
-│   └── dependency_parsing.py        # Linguistic annotation with Stanza
-│
-├── books/                           # Input: original PDF and EPUB files
-├── output/                          # Output: Markdown + eval pages/chunks
-└── scores/                          # Per-book score JSON files</code></pre>
+    <pre><code>book2md/
+  __init__.py            # Public API: from book2md import ConverterPipeline, ...
+  base.py                # Abstract PipelineStep base class
+  config.py              # Typed configuration dataclasses
+  utils.py               # Shared utilities
+  pipeline.py            # ConverterPipeline orchestrator
+  cli.py                 # CLI entry point (book2md command)
+  converters/
+    pdf.py               # PDF → Markdown via Qwen3-VL
+    epub.py              # EPUB → Markdown via Qwen3
+    text.py              # Rule-based conversion (no LLM)
+  metadata/
+    extractor.py         # Author / title / year / genre extraction
+  parsing/
+    parser.py            # Linguistic annotation with Stanza
+  evaluation/
+    evaluator.py         # Quality evaluation (NED, BLEU, MarkdownStructureF1)
+
+books/                   # Input: original PDF and EPUB files
+output/                  # Output: Markdown + eval pages/chunks
+scores/                  # Per-book score JSON files
+pyproject.toml           # Package definition (pip install -e .)
+setup.sh                 # System dependency installer</code></pre>
   </div>
 
   <!-- Setup -->
-  <h2 id="setup">Setup (Google Colab)</h2>
+  <h2 id="setup">Setup</h2>
+  <h3>Local / server</h3>
+  <div class="code-block">
+    <div class="code-label">bash</div>
+    <pre><code>bash setup.sh            # system + Python dependencies
+bash setup.sh --with-eval  # also installs evaluation libraries + Page2MDBench
+pip install -e .           # installs book2md as a command</code></pre>
+  </div>
+  <h3>Google Colab</h3>
   <div class="code-block">
     <div class="code-label">python — Colab cell</div>
-    <pre><code># Conversion only
-!bash setup.sh
-
-# Conversion + evaluation (also clones Page2MDBench)
-!bash setup.sh --with-eval</code></pre>
+    <pre><code>!bash setup.sh --with-eval
+!pip install -e .</code></pre>
   </div>
   <p>
     <code>setup.sh</code> installs <code>poppler-utils</code> (required by pdf2image) and all
     Python dependencies from <code>requirements.txt</code>. The <code>--with-eval</code> flag
     additionally clones <a href="https://github.com/Hipsterfil998/Page2MDBench">Page2MDBench</a>
     and installs the evaluation libraries (<code>rapidfuzz</code>, <code>sacrebleu</code>,
-    <code>mistune</code>, <code>bert-score</code>). The clone step is idempotent: if the
-    directory already exists it is skipped.
+    <code>mistune</code>, <code>bert-score</code>). The <code>pip install -e .</code> step
+    registers the <code>book2md</code> command and makes all modules importable from any working directory.
   </p>
 
   <hr>
@@ -535,22 +541,57 @@
   <hr>
 
   <!-- config.py -->
-  <h2 id="config"><code>config.py</code> &mdash; Central Configuration</h2>
+  <h2 id="config"><code>config.py</code> &mdash; Typed Configuration</h2>
   <p>
-    All parametric values (models, prompts, paths, token limits) are defined here.
-    There are no magic constants scattered across the codebase.
+    All parameters are organised in typed dataclasses. Module-level singleton instances
+    (<code>pdf_config</code>, <code>epub_config</code>, etc.) serve as defaults throughout the
+    codebase. There are three ways to customise them — no source code editing required for
+    common use cases.
   </p>
 
-  <h3>Models</h3>
+  <h3>Level 1 — CLI flags</h3>
+  <div class="code-block">
+    <div class="code-label">bash</div>
+    <pre><code>book2md --input /my/books/ --output /results/ convert --pdf
+book2md parse --langs it de --format json</code></pre>
+  </div>
+
+  <h3>Level 2 — Constructor arguments (Python / Colab)</h3>
   <div class="code-block">
     <div class="code-label">python</div>
-    <pre><code>PDF_MODEL_ID  = "Qwen/Qwen3-VL-4B-Instruct"  # vision-language (PDF pages as images)
-TEXT_MODEL_ID = "Qwen/Qwen3-4B"              # text-only (EPUB chunks, metadata)</code></pre>
+    <pre><code>from book2md import ConverterPipeline
+
+pipeline = ConverterPipeline(
+    input_dir="books/",
+    pdf_model_id="Qwen/Qwen3-VL-7B-Instruct",
+)</code></pre>
+  </div>
+
+  <h3>Level 3 — Config override (DPI, token limits, prompts)</h3>
+  <div class="code-block">
+    <div class="code-label">python</div>
+    <pre><code>from book2md.config import pdf_config, epub_config
+
+pdf_config.dpi = 150
+pdf_config.max_new_tokens = 2048
+epub_config.repetition_penalty = 1.2</code></pre>
+  </div>
+  <p>Override before instantiating any class; defaults apply otherwise.</p>
+
+  <h3>Dataclasses</h3>
+  <div class="code-block">
+    <div class="code-label">python</div>
+    <pre><code>PDFConfig      # model_id, dpi, max_new_tokens, repetition_penalty, prompt
+EPUBConfig     # model_id, max_chunk_chars, max_new_tokens, repetition_penalty, prompt
+MetadataConfig # max_new_tokens, biblio_prompt, genre_prompt
+EvalConfig     # n (pages sampled), enable_prefix_caching
+ParseConfig    # langs, output_format
+PathConfig     # input_dir, output_dir, scores_dir, metadata_csv</code></pre>
   </div>
   <p>
-    Qwen3 is open-weight, available on HuggingFace, and has strong support for Italian and
-    German. The VL variant is required for PDF because pages are rasterized to PNG rather than
-    extracting text directly, which preserves layout, formulas, and images.
+    Qwen3 is open-weight, available on HuggingFace, with strong Italian and German support.
+    The VL variant is required for PDF because pages are rasterised to PNG, preserving layout,
+    formulas, and images.
   </p>
 
   <h3>Prefix Caching</h3>
@@ -619,7 +660,7 @@ TEXT_MODEL_ID = "Qwen/Qwen3-4B"              # text-only (EPUB chunks, metadata)
   <hr>
 
   <!-- book_converter.py -->
-  <h2 id="orchestrator"><code>book_converter.py</code> &mdash; Pipeline Orchestrator</h2>
+  <h2 id="orchestrator"><code>pipeline.py</code> &mdash; Pipeline Orchestrator</h2>
   <p><code>ConverterPipeline</code> exposes three conversion methods:</p>
   <div class="table-wrap">
     <table>
@@ -643,18 +684,18 @@ TEXT_MODEL_ID = "Qwen/Qwen3-4B"              # text-only (EPUB chunks, metadata)
     </div>
   </div>
 
-  <h3>CLI (<code>cli.py</code>)</h3>
+  <h3>CLI</h3>
   <p>
-    All pipeline operations are also available from the command line via <code>cli.py</code>.
-    Directory flags (<code>--input</code>, <code>--output</code>, etc.) default to the values in
-    <code>config.py</code> and must be placed <strong>before</strong> the subcommand:
+    After <code>pip install -e .</code>, all operations are available via the <code>book2md</code>
+    command from any directory. Global flags (<code>--input</code>, <code>--output</code>, etc.)
+    must be placed <strong>before</strong> the subcommand:
   </p>
   <div class="code-block">
     <div class="code-label">bash</div>
-    <pre><code>python cli.py --input books/ --output output/ convert --pdf
-python cli.py --output output/ --scores scores/ evaluate --bertscore
-python cli.py --help          # full option list
-python cli.py convert --help  # subcommand options</code></pre>
+    <pre><code>book2md --input books/ --output output/ convert --pdf
+book2md --output output/ --scores scores/ evaluate --bertscore
+book2md --help          # full option list
+book2md convert --help  # subcommand options</code></pre>
   </div>
   <p>Subcommands: <code>convert</code> (flags: <code>--pdf</code>, <code>--epub</code>, <code>--simple</code>),
   <code>metadata</code>, <code>evaluate</code> (flag: <code>--bertscore</code>),
@@ -663,7 +704,7 @@ python cli.py convert --help  # subcommand options</code></pre>
   <hr>
 
   <!-- text_extraction.py -->
-  <h2 id="rule-based"><code>converters/text_extraction.py</code> &mdash; Rule-Based Conversion</h2>
+  <h2 id="rule-based"><code>converters/text.py</code> &mdash; Rule-Based Conversion</h2>
   <p><code>DocumentProcessor</code> converts without an LLM using deterministic rules.</p>
 
   <h3>PDF</h3>
@@ -702,7 +743,7 @@ python cli.py convert --help  # subcommand options</code></pre>
   <hr>
 
   <!-- pdf2md_LLM.py -->
-  <h2 id="pdf-llm"><code>converters/pdf2md_LLM.py</code> &mdash; PDF to Markdown via LLM</h2>
+  <h2 id="pdf-llm"><code>converters/pdf.py</code> &mdash; PDF to Markdown via LLM</h2>
   <p><code>PDFToMarkdownConverter</code> uses Qwen3-VL (vision-language):</p>
   <ol>
     <li>Rasterizes each PDF page to PNG at <code>PDF_DPI=300</code> dpi.</li>
@@ -725,7 +766,7 @@ python cli.py convert --help  # subcommand options</code></pre>
   <hr>
 
   <!-- epub2md_LLM.py -->
-  <h2 id="epub-llm"><code>converters/epub2md_LLM.py</code> &mdash; EPUB to Markdown via LLM</h2>
+  <h2 id="epub-llm"><code>converters/epub.py</code> &mdash; EPUB to Markdown via LLM</h2>
   <p><code>EpubToMarkdownConverter</code> uses Qwen3 (text-only):</p>
   <ol>
     <li>Iterates chapters in spine order using <code>ebooklib</code> directly (no pypandoc).</li>
@@ -747,7 +788,7 @@ python cli.py convert --help  # subcommand options</code></pre>
   <hr>
 
   <!-- metadata_extractor.py -->
-  <h2 id="metadata"><code>metadata/metadata_extractor.py</code> &mdash; Metadata Extraction</h2>
+  <h2 id="metadata"><code>metadata/extractor.py</code> &mdash; Metadata Extraction</h2>
   <p>
     <code>MetadataExtractor</code> extracts five fields — author, title, year, genre — using
     zero-shot prompting on the text model.
@@ -800,7 +841,7 @@ genre_outputs  = [o.outputs[0].text for o in self.llm.chat(genre_dataset, sp)]</
   <hr>
 
   <!-- evaluator.py -->
-  <h2 id="evaluator"><code>quality_evaluation/evaluator.py</code> &mdash; Quality Evaluation</h2>
+  <h2 id="evaluator"><code>evaluation/evaluator.py</code> &mdash; Quality Evaluation</h2>
   <p>
     <code>QualityEvaluator</code> uses <strong>reference-based metrics</strong> from
     <a href="https://github.com/Hipsterfil998/Page2MDBench" target="_blank">Page2MDBench</a>
@@ -875,7 +916,9 @@ genre_outputs  = [o.outputs[0].text for o in self.llm.chat(genre_dataset, sp)]</
   </p>
   <div class="code-block">
     <div class="code-label">python</div>
-    <pre><code>evaluator = QualityEvaluator(use_bertscore=False)
+    <pre><code>from book2md import QualityEvaluator
+
+evaluator = QualityEvaluator(use_bertscore=False)
 evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")</code></pre>
   </div>
   <p>Results are saved as <code>scores/{book_name}_scores.json</code> with the structure:</p>
@@ -898,7 +941,7 @@ evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")</code></pre>
   <hr>
 
   <!-- dependency_parsing.py -->
-  <h2 id="parser"><code>dependency_parsing/dependency_parsing.py</code> &mdash; Linguistic Annotation</h2>
+  <h2 id="parser"><code>parsing/parser.py</code> &mdash; Linguistic Annotation</h2>
   <p>
     <code>DependencyParser</code> applies morphosyntactic dependency analysis to the main
     Markdown file of each converted book.
@@ -1035,10 +1078,10 @@ evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")</code></pre>
       <a href="https://github.com/QwenLM/Qwen3" target="_blank">github.com/QwenLM/Qwen3</a>
     </li>
     <li>
-      <strong>Qwen2.5 (text)</strong> — Text-only model used for EPUB conversion and metadata extraction.<br/>
-      Qwen Team, Alibaba Cloud (2025). <em>Qwen2.5 Technical Report.</em><br/>
-      <a href="https://arxiv.org/abs/2412.15115" target="_blank">arxiv.org/abs/2412.15115</a> &nbsp;·&nbsp;
-      <a href="https://github.com/QwenLM/Qwen2.5" target="_blank">github.com/QwenLM/Qwen2.5</a>
+      <strong>Qwen3 (text)</strong> — Text-only model used for EPUB conversion and metadata extraction.<br/>
+      Qwen Team, Alibaba Cloud (2025). <em>Qwen3 Technical Report.</em><br/>
+      <a href="https://arxiv.org/abs/2505.09388" target="_blank">arxiv.org/abs/2505.09388</a> &nbsp;·&nbsp;
+      <a href="https://github.com/QwenLM/Qwen3" target="_blank">github.com/QwenLM/Qwen3</a>
     </li>
   </ul>
 

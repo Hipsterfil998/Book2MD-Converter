@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="BookConverter logo" width="320"/>
+<img src="docs/logo.svg" alt="Book2MD Converter logo" width="320"/>
 
 # Book2MD Converter
 
 </div>
 
-Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdown, extracting bibliographic metadata, and evaluating conversion quality, all via vLLM inference.
+Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdown, extracting bibliographic metadata, evaluating conversion quality, and annotating linguistic structure — all via vLLM inference.
 
 > **Recommended GPU:** NVIDIA A100 or equivalent (Google Colab G4).
 
@@ -17,178 +17,176 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 ## Project Structure
 
 ```
-├── config.py                      # Central configuration: models, paths, parameters, prompts
-├── utils.py                       # Shared utilities (image encoding, stratified sampling)
-├── book_converter.py              # Main pipeline orchestrator (with resume support)
-├── converters/
-│   ├── text_extraction.py         # Rule-based PDF/EPUB -> Markdown (no LLM)
-│   ├── pdf2md_LLM.py              # PDF -> Markdown via Qwen2.5-VL (vision LLM)
-│   └── epub2md_LLM.py             # EPUB -> Markdown via Qwen2.5 (text LLM)
-├── metadata/
-│   └── metadata_extractor.py      # Author/title/year/genre extraction (with CSV resume)
-├── quality_evaluation/
-│   └── evaluator.py               # Reference-based quality evaluation (NED, BLEU, MarkdownStructureF1)
-├── dependency_parsing/
-│   └── dependency_parsing.py      # Stanza-based dependency parsing
-├── tests/                         # pytest test suite
-└── requirements.txt
+book2md/
+  __init__.py            # Public API: from book2md import ConverterPipeline, ...
+  base.py                # Abstract PipelineStep base class
+  config.py              # Typed configuration dataclasses
+  utils.py               # Shared utilities (image encoding, sampling, repetition filter)
+  pipeline.py            # ConverterPipeline orchestrator
+  cli.py                 # CLI entry point
+  converters/
+    pdf.py               # PDF → Markdown via Qwen3-VL (vision LLM)
+    epub.py              # EPUB → Markdown via Qwen3 (text LLM)
+    text.py              # Rule-based PDF/EPUB → Markdown (no LLM)
+  metadata/
+    extractor.py         # Author / title / year / genre extraction
+  parsing/
+    parser.py            # Dependency parsing with Stanza
+  evaluation/
+    evaluator.py         # Quality evaluation (NED, BLEU, MarkdownStructureF1)
+pyproject.toml
+requirements.txt
+setup.sh
 ```
+
+---
+
+## Setup
+
+### Local / server
+
+```bash
+# Install system + Python dependencies
+bash setup.sh
+
+# Also install evaluation libraries and clone Page2MDBench
+bash setup.sh --with-eval
+
+# Install the package (makes `book2md` available as a command)
+pip install -e .
+```
+
+### Google Colab
+
+```python
+!bash setup.sh            # conversion only
+!bash setup.sh --with-eval  # + evaluation
+
+!pip install -e .
+```
+
+`setup.sh` installs `poppler-utils` and all Python dependencies. The `--with-eval` flag additionally clones [Page2MDBench](https://github.com/Hipsterfil998/Page2MDBench) and installs the evaluation libraries (`rapidfuzz`, `sacrebleu`, `mistune`, `bert-score`).
+
+### GPU requirements (conversion only)
+
+| Model | VRAM (bfloat16) | Recommended |
+|---|---|---|
+| Qwen3-VL-4B-Instruct (PDF) | ~10 GB | A100 / G4 |
+| Qwen3-4B (EPUB + metadata) | ~8 GB | A100 / G4 |
+
+Both models are never loaded simultaneously. Quality evaluation does **not** require a GPU.
 
 ---
 
 ## Configuration
 
-All parameters and prompts are centralised in `config.py`. Edit this file before running; no need to touch individual modules.
+Parameters are organised in typed dataclasses in `book2md/config.py`. There are three ways to customise them — no source code editing required for common use cases.
 
-```python
-# Models
-PDF_MODEL_ID  = "Qwen/Qwen3-VL-4B-Instruct"  # vision-language (PDF -> Markdown)
-TEXT_MODEL_ID = "Qwen/Qwen3-4B"              # text-only (EPUB -> Markdown, metadata)
+### Level 1 — CLI flags (directories, models, languages)
 
-# Generation
-PDF_MAX_NEW_TOKENS        = 4096
-EPUB_MAX_NEW_TOKENS       = 2_048
-METADATA_MAX_NEW_TOKENS   = 128
-PDF_REPETITION_PENALTY    = 1.15   # prevents looping repetitions
-EPUB_REPETITION_PENALTY   = 1.15
-
-# Evaluation sampling
-EVAL_N = 20  # pages/chunks sampled per book
-
-# Paths
-INPUT_DIR    = "books/"
-OUTPUT_DIR   = "output/"
-SCORES_DIR   = "scores/"
-METADATA_CSV = "metadata/metadata.csv"
-
-# Prompts (PDF_PROMPT, EPUB_PROMPT, BIBLIO_PROMPT, GENRE_PROMPT)
+```bash
+book2md --input /my/books/ --output /results/ convert --pdf
+book2md --output /results/ --scores /scores/ evaluate
+book2md parse --langs it de --format conllu
 ```
 
-Every constructor still accepts the same parameters explicitly, so individual overrides remain possible without editing the config.
+Run `book2md --help` or `book2md <subcommand> --help` for the full option list.
 
----
-
-## Setup on Google Colab
+### Level 2 — Python / Colab (constructor arguments)
 
 ```python
-# Conversion only
-!bash setup.sh
+from book2md import ConverterPipeline
 
-# Conversion + evaluation
-!bash setup.sh --with-eval
+pipeline = ConverterPipeline(
+    input_dir="books/",
+    output_dir="output/",
+    pdf_model_id="Qwen/Qwen3-VL-7B-Instruct",   # override model
+    text_model_id="Qwen/Qwen3-8B",
+)
+pipeline.run_pdf_llm()
 ```
 
-The script installs `poppler-utils` and all Python dependencies. The `--with-eval` flag also clones [Page2MDBench](https://github.com/Hipsterfil998/Page2MDBench) and installs the evaluation libraries.
+### Level 3 — Config override (advanced: DPI, token limits, prompts)
 
-### 3. GPU requirements (conversion only)
+```python
+from book2md.config import pdf_config, epub_config
 
-| Model | VRAM (bfloat16) |
-|---|---|
-| Qwen3-VL-4B-Instruct (PDF) | ~10 GB |
-| Qwen3-4B (EPUB + metadata) | ~8 GB |
+pdf_config.dpi = 150
+pdf_config.max_new_tokens = 2048
+epub_config.repetition_penalty = 1.2
+```
 
-An **A100 or G4** is recommended for full book processing needs.
-
-Both models are never loaded simultaneously; the pipeline loads one at a time.
-
-Quality evaluation does **not** require a GPU or any LLM. NED, BLEU, and MarkdownStructureF1 run on CPU. BERTScore (optional) automatically uses GPU if available, otherwise CPU.
+Call this before instantiating any class; defaults apply otherwise.
 
 ---
 
 ## Usage
 
-Both a Python interface and a command-line interface are available. They are fully equivalent.
-
-All CLI flags default to the values in `config.py`. Directory overrides (`--input`, `--output`, etc.) go **before** the subcommand:
-
-```bash
-python cli.py --input /miei/libri/ --output /risultati/ convert --pdf
-python cli.py --output /risultati/ --scores /punteggi/ evaluate
-```
-
-Run `python cli.py --help` or `python cli.py <subcommand> --help` for the full option list.
-
-### Convert books (PDF and/or EPUB)
-
-**Python API:**
-```python
-from book_converter import ConverterPipeline
-
-pipeline = ConverterPipeline(
-    input_dir="books/",
-    output_dir="output/",
-    # pdf_model_id="Qwen/Qwen3-VL-4B-Instruct",   # default
-    # text_model_id="Qwen/Qwen3-4B",              # default
-)
-
-pipeline.run_pdf_llm()    # converts all .pdf files
-pipeline.run_epub_llm()   # converts all .epub files
-# pipeline.run_simple()   # rule-based fallback, no LLM
-```
+### Convert books
 
 **CLI:**
 ```bash
-python cli.py convert --pdf
-python cli.py convert --epub
-python cli.py convert --simple
+book2md convert --pdf       # PDF → Markdown via Qwen3-VL
+book2md convert --epub      # EPUB → Markdown via Qwen3
+book2md convert --simple    # rule-based fallback, no LLM
 ```
 
-**Resume support:** if `output/` already contains converted books (i.e. `output/{book_name}/{book_name}.md` exists), those books are automatically skipped. Re-running the pipeline after an interruption will pick up from where it left off.
+**Python:**
+```python
+from book2md import ConverterPipeline
+
+pipeline = ConverterPipeline()
+pipeline.run_pdf_llm()
+pipeline.run_epub_llm()
+# pipeline.run_simple()  # no GPU required
+```
+
+**Resume support:** if `output/{book_name}/{book_name}.md` already exists, the book is automatically skipped. Re-running after an interruption resumes from where it left off.
+
+---
 
 ### Extract metadata
 
-**Python API:**
-```python
-from metadata.metadata_extractor import MetadataExtractor
-
-extractor = MetadataExtractor()
-extractor.run(
-    output_dir="output/",              # folder with converted book subfolders
-    output_csv="metadata/metadata.csv"
-)
-```
-
 **CLI:**
 ```bash
-python cli.py metadata
+book2md metadata
+book2md --csv results/metadata.csv metadata   # custom output path
 ```
 
-Extracts per book:
-- **Author, title, year**: from front pages (title page, TOC, preface)
-- **Genre**: from body pages (main content)
+**Python:**
+```python
+from book2md import MetadataExtractor
+
+MetadataExtractor().run(output_dir="output/", output_csv="metadata/metadata.csv")
+```
+
+Extracts per book: **author, title, year** (from front pages) and **genre** (from body pages).
 
 Genres: `Journalistic`, `Functional/Gebrauchstexte`, `Factual/Non fiction/Wissenschaft`, `Fiction/Belletristik`
 
-**Resume support:** if `metadata.csv` already exists, books already listed in it are skipped and only new entries are appended. The existing rows are never overwritten.
+**Resume support:** existing records in the CSV are never overwritten; only new books are appended.
+
+---
 
 ### Evaluate conversion quality
 
 Evaluation uses reference-based metrics from [Page2MDBench](https://github.com/Hipsterfil998/Page2MDBench). No LLM or GPU required.
 
-**Python API:**
-```python
-from quality_evaluation.evaluator import QualityEvaluator
-
-evaluator = QualityEvaluator(use_bertscore=False)  # set True to also compute BERTScore
-evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")
-```
-
 **CLI:**
 ```bash
-python cli.py evaluate
-python cli.py evaluate --bertscore   # also compute BERTScore
+book2md evaluate
+book2md evaluate --bertscore   # also compute BERTScore (slower)
 ```
 
-`evaluate_all` detects the conversion type of each book automatically (`eval_pages/` = PDF, `eval_chunks/` = EPUB) and calls the right method.
-
-Individual books can also be evaluated directly:
-
+**Python:**
 ```python
-evaluator.evaluate_pdf(eval_pages_dir="output/book_name/eval_pages/", scores_dir="scores/")
-evaluator.evaluate_epub(eval_chunks_dir="output/book_name/eval_chunks/", scores_dir="scores/")
-```
+from book2md import QualityEvaluator
 
-**Metrics:**
+QualityEvaluator(use_bertscore=False).evaluate_all(
+    output_dir="output/",
+    scores_dir="scores/"
+)
+```
 
 | Metric | Direction | Description |
 |---|---|---|
@@ -197,97 +195,60 @@ evaluator.evaluate_epub(eval_chunks_dir="output/book_name/eval_chunks/", scores_
 | MarkdownStructureF1 | higher is better | Structural element overlap |
 | BERTScore | higher is better | Semantic similarity (optional, slow on CPU) |
 
-NED, BLEU, and MarkdownStructureF1 run on CPU with no GPU needed. BERTScore automatically uses GPU if available (`cuda`), otherwise falls back to CPU — which works but is significantly slower.
+---
 
-**References:** PDF evaluation compares `{i}.ref.md` (rule-based Markdown saved during conversion) against `{i}.md` (LLM output). EPUB evaluation converts `{i}.html` to Markdown via DocumentProcessor and compares it against `{i}.md`.
+### Dependency parsing
+
+**CLI:**
+```bash
+book2md parse
+book2md parse --langs it de --format conllu
+```
+
+**Python:**
+```python
+from book2md import DependencyParser
+
+DependencyParser(langs=["it", "de"], output_format="conllu").run(
+    input_dir="output/",
+    output_dir="parsed/"
+)
+```
+
+Runs full NLP annotation (tokenize, POS, lemma, depparse) on each book's main Markdown file. Language is detected automatically. Stanza models are downloaded on first run (~500 MB per language).
 
 ---
 
 ## Output Structure
 
-After conversion, each book produces a self-contained subfolder:
-
 ```
 output/
 └── book_name/
     ├── book_name.md          # full Markdown output
-    ├── images/               # embedded images extracted from the source
-    ├── eval_pages/           # PDF only: sampled Markdown pairs for evaluation
-    │   ├── 0.md              #   LLM-generated Markdown for page 0
-    │   ├── 0.ref.md          #   PyMuPDF text-layer reference for page 0
-    │   ├── 12.md
-    │   ├── 12.ref.md
+    ├── images/               # embedded images
+    ├── eval_pages/           # PDF: sampled page pairs for evaluation
+    │   ├── 0.md              #   LLM-generated Markdown
+    │   ├── 0.ref.md          #   PyMuPDF text-layer reference
     │   └── ...
-    └── eval_chunks/          # EPUB only: sampled Markdown pairs for evaluation
-        ├── 0.md              #   LLM-generated Markdown for chunk 0
-        ├── 0.ref.md          #   HTML-to-Markdown reference for chunk 0
-        ├── 5.md
-        ├── 5.ref.md
-        └── ...
-```
+    └── eval_chunks/          # EPUB: sampled chunk pairs for evaluation
 
-Evaluation scores are saved separately:
-
-```
 scores/
-└── book_name_scores.json     # {"average": {"ned": 0.12, "bleu": 68.4, "structure_f1": 0.91}, "pages": {...}}
-```
+└── book_name_scores.json     # {"average": {"ned": 0.12, "bleu": 68.4, ...}, "pages": {...}}
 
-Metadata output:
-
-```
 metadata/
 └── metadata.csv              # columns: book, author, title, year, genre
+
+parsed/
+└── book_name.conllu          # or .json
 ```
-
-### Dependency parsing
-
-**Python API:**
-```python
-from dependency_parsing.dependency_parsing import DependencyParser
-
-parser = DependencyParser(langs=["it", "de"], output_format="conllu")
-parser.run(input_dir="output/", output_dir="parsed/")
-```
-
-**CLI:**
-```bash
-python cli.py parse
-python cli.py parse --langs it de --format conllu
-```
-
-Runs full NLP annotation on the main Markdown file of each book (`output/{stem}/{stem}.md`):
-- tokenization, POS tagging, lemmatization, dependency parsing (via Stanza)
-- Markdown is stripped to plain text before parsing
-- Language is detected automatically per book using `langdetect`; only the matching pipeline is used
-- Output formats: `conllu` (CoNLL-U), `json`, or `both`
-- One output file per book: `{stem}.conllu` / `{stem}.json` (no language suffix)
-
-Each token in the output carries: `id`, `text`, `lemma`, `upos`, `xpos`, `feats`, `head`, `deprel`.
-
-Stanza models are downloaded automatically on first run (~500 MB per language).
 
 ---
 
 ## Markdown Format
 
-- **PDF**: pages separated by `\n\n`, each with a `<!-- Page N -->` header; blank pages are automatically skipped
-- **EPUB**: chunks separated by `\n\n`; TOC/nav chapters are automatically skipped
+- **PDF**: pages separated by `\n\n`, each with a `<!-- Page N -->` header; blank pages are skipped
+- **EPUB**: chunks separated by `\n\n`; TOC/nav chapters are skipped
 
-**Output cleaning (both formats):** after generation, each chunk/page goes through `_clean()` (strips code fences and prompt echoes) then `truncate_repetitions()`, which runs two passes:
+**Repetition filtering** runs two passes after generation:
 1. **Line-level**: a line of 25+ chars reappearing within 6 lines triggers truncation.
 2. **Inline**: a phrase of 40+ chars reappearing within 400 chars of running text triggers truncation — catches loops inside a single paragraph, common with scanned PDFs.
-
----
-
-## Evaluation Details
-
-During conversion, `eval_n=20` pages/chunks are sampled using stratified sampling:
-
-| Zone | Pages sampled | Content |
-|---|---|---|
-| Front (first 10%) | ~3 | Title page, TOC, preface |
-| Body (middle 80%) | ~14 | Main text, tables, formulas |
-| Back (last 10%) | ~3 | Bibliography, index, appendices |
-
-The same sampled pages are reused for both metadata extraction (front -> biblio, body -> genre) and quality evaluation: no reprocessing of original files required.

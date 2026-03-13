@@ -1,19 +1,24 @@
 """
-conftest.py — Pytest configuration for the book-conversion pipeline.
+conftest.py — Pytest configuration for the book2md pipeline.
 
-Mocks heavy/GPU dependencies (vllm, fitz, stanza, …) before any module
+Mocks heavy/GPU dependencies (vllm, fitz, stanza, metrics, …) before any module
 imports them, so tests can run on a plain CPU machine without model weights.
 """
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
-# Make bare project imports (from config import ..., from utils import ...) work
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 # ── Mock heavy dependencies ────────────────────────────────────────────────────
-for _mod in ("vllm", "fitz", "pdf2image", "pypandoc", "stanza"):
+for _mod in ("vllm", "fitz", "pdf2image", "pypandoc", "stanza", "langdetect"):
     sys.modules[_mod] = MagicMock()
+
+# langdetect: expose the specific names imported by parser.py
+_langdetect = sys.modules["langdetect"]
+_langdetect.detect = MagicMock(return_value="it")
+_langdetect.LangDetectException = Exception
+_langdetect.DetectorFactory = MagicMock()
+
+# Page2MDBench metrics (not available in test environment)
+sys.modules["metrics"] = MagicMock()
 
 # ebooklib: give EpubImage / EpubHtml real types so isinstance() works
 _epub = MagicMock()
