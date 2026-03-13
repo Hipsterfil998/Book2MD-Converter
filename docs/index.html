@@ -417,6 +417,7 @@
     <li class="section-title">Reference</li>
     <li><a href="#decisions"><span class="nav-dot"></span>Architectural Decisions</a></li>
     <li><a href="#tests"><span class="nav-dot"></span>Tests</a></li>
+    <li><a href="#references"><span class="nav-dot"></span>References</a></li>
   </ul>
 </nav>
 
@@ -424,21 +425,23 @@
 <main>
 
   <!-- Hero -->
-  <div class="hero">
-    <div class="hero-eyebrow">📖 Technical Reference</div>
-    <img src="logo.svg" alt="BookConverter logo" style="width:280px;max-width:90%;margin-bottom:1.2rem;"/>
-    <h1>Book Conversion Pipeline</h1>
-    <p class="subtitle">
-      Convert Italian and German books (PDF / EPUB) to structured Markdown,
-      extract bibliographic metadata, evaluate conversion quality, and annotate linguistic structure.
-    </p>
-    <div class="hero-badges">
-      <span class="badge badge-purple">vLLM inference</span>
-      <span class="badge badge-teal">Qwen3-VL + Qwen3</span>
-      <span class="badge badge-orange">NED · BLEU · MarkdownF1</span>
-      <span class="badge badge-purple">Stanza NLP</span>
-      <span class="badge badge-teal">IT · DE</span>
+  <div class="hero" style="display:flex;align-items:center;justify-content:space-between;gap:2rem;flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+      <div class="hero-eyebrow">📖 Technical Reference</div>
+      <h1>Book Conversion Pipeline</h1>
+      <p class="subtitle">
+        Convert Italian and German books (PDF / EPUB) to structured Markdown,
+        extract bibliographic metadata, evaluate conversion quality, and annotate linguistic structure.
+      </p>
+      <div class="hero-badges">
+        <span class="badge badge-purple">vLLM inference</span>
+        <span class="badge badge-teal">Qwen3-VL + Qwen3</span>
+        <span class="badge badge-orange">NED · BLEU · MarkdownF1</span>
+        <span class="badge badge-purple">Stanza NLP</span>
+        <span class="badge badge-teal">IT · DE</span>
+      </div>
     </div>
+    <img src="logo.svg" alt="BookConverter logo" style="width:260px;max-width:100%;flex-shrink:0;"/>
   </div>
 
   <!-- Overview -->
@@ -1008,6 +1011,95 @@ evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")</code></pre>
     <li><strong>test_book_converter.py:</strong> tests resume logic (<code>_already_converted</code>) and correct skipping across all three run methods</li>
     <li><strong>test_metadata.py:</strong> tests <code>_parse_json</code> (robust parsing), <code>collect_samples</code> (page selection), and <code>run</code> (CSV append/skip behavior)</li>
     <li><strong>test_utils.py:</strong> tests <code>sample_indices</code> (first-10 guarantee, stratification) and <code>pil_to_data_url</code> (PNG round-trip)</li>
+  </ul>
+
+
+  <hr>
+
+  <!-- References -->
+  <h2 id="references">References</h2>
+  <p>Sources and papers for the core tools and metrics used in this pipeline.</p>
+
+  <h3>Inference &amp; Models</h3>
+  <ul>
+    <li>
+      <strong>vLLM</strong> — PagedAttention-based LLM serving engine.<br/>
+      Kwon et al. (2023). <em>Efficient Memory Management for Large Language Model Serving with PagedAttention.</em> SOSP 2023.<br/>
+      <a href="https://arxiv.org/abs/2309.06180" target="_blank">arxiv.org/abs/2309.06180</a> &nbsp;·&nbsp;
+      <a href="https://github.com/vllm-project/vllm" target="_blank">github.com/vllm-project/vllm</a>
+    </li>
+    <li>
+      <strong>Qwen3-VL</strong> — Vision-language model used for PDF page conversion.<br/>
+      Qwen Team, Alibaba Cloud (2025). <em>Qwen3 Technical Report.</em><br/>
+      <a href="https://arxiv.org/abs/2505.09388" target="_blank">arxiv.org/abs/2505.09388</a> &nbsp;·&nbsp;
+      <a href="https://github.com/QwenLM/Qwen3" target="_blank">github.com/QwenLM/Qwen3</a>
+    </li>
+    <li>
+      <strong>Qwen2.5 (text)</strong> — Text-only model used for EPUB conversion and metadata extraction.<br/>
+      Qwen Team, Alibaba Cloud (2025). <em>Qwen2.5 Technical Report.</em><br/>
+      <a href="https://arxiv.org/abs/2412.15115" target="_blank">arxiv.org/abs/2412.15115</a> &nbsp;·&nbsp;
+      <a href="https://github.com/QwenLM/Qwen2.5" target="_blank">github.com/QwenLM/Qwen2.5</a>
+    </li>
+  </ul>
+
+  <h3>Evaluation Metrics</h3>
+  <ul>
+    <li>
+      <strong>Page2MDBench</strong> — Benchmark suite providing NED, BLEU, MarkdownStructureF1, and BERTScore for PDF-to-Markdown evaluation.<br/>
+      <a href="https://github.com/Hipsterfil998/Page2MDBench" target="_blank">github.com/Hipsterfil998/Page2MDBench</a>
+    </li>
+    <li>
+      <strong>BLEU</strong> — Bilingual Evaluation Understudy; n-gram precision metric for text generation quality.<br/>
+      Papineni et al. (2002). <em>BLEU: a Method for Automatic Evaluation of Machine Translation.</em> ACL 2002.<br/>
+      <a href="https://aclanthology.org/P02-1040" target="_blank">aclanthology.org/P02-1040</a>
+      &nbsp;·&nbsp; Implementation via <a href="https://github.com/mjpost/sacrebleu" target="_blank">sacrebleu</a>
+      (Post, 2018. <a href="https://arxiv.org/abs/1804.08771" target="_blank">arxiv.org/abs/1804.08771</a>)
+    </li>
+    <li>
+      <strong>BERTScore</strong> — Semantic similarity metric using contextual BERT embeddings.<br/>
+      Zhang et al. (2020). <em>BERTScore: Evaluating Text Generation with BERT.</em> ICLR 2020.<br/>
+      <a href="https://arxiv.org/abs/1904.09675" target="_blank">arxiv.org/abs/1904.09675</a> &nbsp;·&nbsp;
+      <a href="https://github.com/Tiiiger/bert_score" target="_blank">github.com/Tiiiger/bert_score</a>
+    </li>
+    <li>
+      <strong>NED</strong> — Normalised Edit Distance; character-level string similarity based on Levenshtein distance, normalised to [0, 1].
+      Implementation via <a href="https://github.com/maxbachmann/RapidFuzz" target="_blank">RapidFuzz</a>.
+    </li>
+  </ul>
+
+  <h3>NLP &amp; Parsing</h3>
+  <ul>
+    <li>
+      <strong>Stanza</strong> — Neural NLP library for tokenization, POS tagging, lemmatization, and dependency parsing.<br/>
+      Qi et al. (2020). <em>Stanza: A Python Natural Language Processing Toolkit for Many Human Languages.</em> ACL 2020.<br/>
+      <a href="https://arxiv.org/abs/2003.07082" target="_blank">arxiv.org/abs/2003.07082</a> &nbsp;·&nbsp;
+      <a href="https://github.com/stanfordnlp/stanza" target="_blank">github.com/stanfordnlp/stanza</a>
+    </li>
+    <li>
+      <strong>langdetect</strong> — Language detection library ported from Google's language-detection.<br/>
+      <a href="https://github.com/Mimino666/langdetect" target="_blank">github.com/Mimino666/langdetect</a>
+    </li>
+  </ul>
+
+  <h3>PDF &amp; EPUB Processing</h3>
+  <ul>
+    <li>
+      <strong>PyMuPDF (fitz)</strong> — Python bindings for MuPDF; used for PDF rendering and text-layer extraction.<br/>
+      <a href="https://pymupdf.readthedocs.io" target="_blank">pymupdf.readthedocs.io</a> &nbsp;·&nbsp;
+      <a href="https://github.com/pymupdf/PyMuPDF" target="_blank">github.com/pymupdf/PyMuPDF</a>
+    </li>
+    <li>
+      <strong>pdf2image</strong> — Converts PDF pages to PIL images via Poppler.<br/>
+      <a href="https://github.com/Belval/pdf2image" target="_blank">github.com/Belval/pdf2image</a>
+    </li>
+    <li>
+      <strong>ebooklib</strong> — Python library for reading and writing EPUB2/EPUB3 files.<br/>
+      <a href="https://github.com/aerkalov/ebooklib" target="_blank">github.com/aerkalov/ebooklib</a>
+    </li>
+    <li>
+      <strong>BeautifulSoup4</strong> — HTML/XML parser used for extracting and cleaning EPUB chapter content.<br/>
+      <a href="https://www.crummy.com/software/BeautifulSoup/" target="_blank">crummy.com/software/BeautifulSoup</a>
+    </li>
   </ul>
 
 </main>
