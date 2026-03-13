@@ -66,12 +66,14 @@ def suppress_worker_stderr():
 
 
 def truncate_repetitions(text: str, min_len: int = 25, window: int = 6) -> str:
-    """Truncate LLM output at the first detected line-level repetition loop.
+    """Truncate LLM output at the first detected repetition loop.
 
-    Scans lines in order; if a non-trivial line (>= min_len chars) reappears
-    within `window` lines of its previous occurrence, the text is cut right
-    after the first occurrence of that line.
+    Two passes:
+    1. Line-level: a line of >= min_len chars reappears within `window` lines.
+    2. Inline: a phrase of >= 40 chars reappears within 400 chars of running text
+       (catches loops inside a single line, common with scanned PDFs).
     """
+    # Pass 1: line-level
     lines = text.split("\n")
     last_seen: dict[str, int] = {}
     for i, line in enumerate(lines):
@@ -81,6 +83,16 @@ def truncate_repetitions(text: str, min_len: int = 25, window: int = 6) -> str:
         if key in last_seen and i - last_seen[key] <= window:
             return "\n".join(lines[: last_seen[key] + 1]).rstrip()
         last_seen[key] = i
+
+    # Pass 2: inline phrase repetition
+    phrase_len, radius = 40, 400
+    for i in range(len(text) - phrase_len * 2):
+        phrase = text[i:i + phrase_len]
+        end = min(len(text), i + phrase_len + radius)
+        pos = text.find(phrase, i + phrase_len, end)
+        if pos != -1:
+            return text[:pos].rstrip()  # truncate before the second occurrence
+
     return text
 
 
