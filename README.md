@@ -10,7 +10,7 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 
 > **Recommended GPU:** NVIDIA A100 or equivalent (Google Colab G4).
 
-**[📖 Full Documentation](https://hipsterfil998.github.io/Book2MDProcessor/)**
+**[📖 Full Documentation](https://hipsterfil998.github.io/Book2MD-Converter/)**
 
 ---
 
