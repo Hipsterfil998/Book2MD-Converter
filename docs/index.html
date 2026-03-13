@@ -463,28 +463,28 @@
       directory tree
     </div>
     <pre><code>book2md/
-  __init__.py            # Public API: from book2md import ConverterPipeline, ...
-  base.py                # Abstract PipelineStep base class
-  config.py              # Typed configuration dataclasses
-  utils.py               # Shared utilities
-  pipeline.py            # ConverterPipeline orchestrator
-  cli.py                 # CLI entry point (book2md command)
-  converters/
-    pdf.py               # PDF → Markdown via Qwen3-VL
-    epub.py              # EPUB → Markdown via Qwen3
-    text.py              # Rule-based conversion (no LLM)
-  metadata/
-    extractor.py         # Author / title / year / genre extraction
-  parsing/
-    parser.py            # Linguistic annotation with Stanza
-  evaluation/
-    evaluator.py         # Quality evaluation (NED, BLEU, MarkdownStructureF1)
+├── __init__.py                    # Public API: from book2md import ConverterPipeline, ...
+├── base.py                        # Abstract PipelineStep base class
+├── config.py                      # Typed configuration dataclasses
+├── utils.py                       # Shared utilities
+├── pipeline.py                    # ConverterPipeline orchestrator
+├── cli.py                         # CLI entry point (book2md command)
+├── converters/
+│   ├── pdf.py                     # PDF → Markdown via Qwen3-VL
+│   ├── epub.py                    # EPUB → Markdown via Qwen3
+│   └── text.py                    # Rule-based conversion (no LLM)
+├── metadata/
+│   └── extractor.py               # Author / title / year / genre extraction
+├── parsing/
+│   └── parser.py                  # Linguistic annotation with Stanza
+└── evaluation/
+    └── evaluator.py               # Quality evaluation (NED, BLEU, MarkdownStructureF1)
 
-books/                   # Input: original PDF and EPUB files
-output/                  # Output: Markdown + eval pages/chunks
-scores/                  # Per-book score JSON files
-pyproject.toml           # Package definition (pip install -e .)
-setup.sh                 # System dependency installer</code></pre>
+books/                             # Input: original PDF and EPUB files
+output/                            # Output: Markdown + eval pages/chunks
+scores/                            # Per-book score JSON files
+pyproject.toml                     # Package definition (pip install -e .)
+setup.sh                           # System dependency installer</code></pre>
   </div>
 
   <!-- Setup -->

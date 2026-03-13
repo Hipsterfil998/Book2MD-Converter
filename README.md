@@ -18,22 +18,22 @@ Pipeline for converting Italian and German books (PDF/EPUB) to structured Markdo
 
 ```
 book2md/
-  __init__.py            # Public API: from book2md import ConverterPipeline, ...
-  base.py                # Abstract PipelineStep base class
-  config.py              # Typed configuration dataclasses
-  utils.py               # Shared utilities (image encoding, sampling, repetition filter)
-  pipeline.py            # ConverterPipeline orchestrator
-  cli.py                 # CLI entry point
-  converters/
-    pdf.py               # PDF → Markdown via Qwen3-VL (vision LLM)
-    epub.py              # EPUB → Markdown via Qwen3 (text LLM)
-    text.py              # Rule-based PDF/EPUB → Markdown (no LLM)
-  metadata/
-    extractor.py         # Author / title / year / genre extraction
-  parsing/
-    parser.py            # Dependency parsing with Stanza
-  evaluation/
-    evaluator.py         # Quality evaluation (NED, BLEU, MarkdownStructureF1)
+├── __init__.py                    # Public API: from book2md import ConverterPipeline, ...
+├── base.py                        # Abstract PipelineStep base class
+├── config.py                      # Typed configuration dataclasses
+├── utils.py                       # Shared utilities (image encoding, sampling, repetition filter)
+├── pipeline.py                    # ConverterPipeline orchestrator
+├── cli.py                         # CLI entry point
+├── converters/
+│   ├── pdf.py                     # PDF → Markdown via Qwen3-VL (vision LLM)
+│   ├── epub.py                    # EPUB → Markdown via Qwen3 (text LLM)
+│   └── text.py                    # Rule-based PDF/EPUB → Markdown (no LLM)
+├── metadata/
+│   └── extractor.py               # Author / title / year / genre extraction
+├── parsing/
+│   └── parser.py                  # Dependency parsing with Stanza
+└── evaluation/
+    └── evaluator.py               # Quality evaluation (NED, BLEU, MarkdownStructureF1)
 pyproject.toml
 requirements.txt
 setup.sh
