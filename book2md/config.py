@@ -41,10 +41,14 @@ Markdown conventions:
 
 Rules:
 - Preserve heading hierarchy as in the source
-- use the heading schemes only for titles and section headings
+- Use the heading schemes only for titles and section headings
 - Replace [IMAGE_N] with ![image_N](images/image_N.png)
-- never duplicate text
-- if in the same scenned image there are two pages, separate the pages accordin to the page number
+- Never duplicate text
+- If in the same scanned image there are two pages, separate them according to the page number
+- Ignore page numbers (isolated digits at top or bottom of page)
+- Ignore running headers/footers (repeated text like author name or chapter title)
+- Captions below figures/tables: render as plain text after the image/table, not as headings
+- Two-column layouts: merge into single-column reading order (left column first, then right)
 - Output ONLY the Markdown, no commentary"""
 
 
@@ -70,8 +74,13 @@ Markdown conventions:
 
 Rules:
 - Preserve heading hierarchy as in the source
-- use the heading schemes only for titles and section headings
-- never duplicate text
+- Use the heading schemes only for titles and section headings
+- Never duplicate text
+- Ignore page numbers (isolated digits)
+- Ignore running headers/footers (repeated text like author name or chapter title)
+- Captions below figures/tables: render as plain text after the image/table, not as headings
+- <aside> and epub:type="footnote" elements: render as [^n]: footnotes
+- <cite>: render as *italic*
 - Output ONLY the Markdown, no commentary
 
 

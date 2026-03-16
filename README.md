@@ -223,7 +223,9 @@ DependencyParser(langs=["it", "de"], output_format="conllu").run(
 )
 ```
 
-Runs full NLP annotation (tokenize, POS, lemma, depparse) on each book's main Markdown file. Language is detected automatically. Stanza models are downloaded on first run (~500 MB per language).
+Runs full NLP annotation (tokenize, POS, lemma, depparse, NER) on each book's main Markdown file. Language is detected automatically. Stanza models are downloaded on first run (~500 MB per language).
+
+NER tags follow the BIO scheme (e.g. `B-PER`, `I-ORG`). In CoNLL-U output, entity tags are written in the MISC column (`NER=B-PER`); non-entity tokens have `_`. In JSON output, each token has a `"ner"` field and each sentence has an `"entities"` array with span-level entries (`text`, `type`, `start`, `end`).
 
 ---
 
@@ -256,6 +258,12 @@ parsed/
 
 - **PDF**: pages separated by `\n\n`, each with a `<!-- Page N -->` header; blank pages are skipped
 - **EPUB**: chunks separated by `\n\n`; TOC/nav chapters are skipped
+
+**Conversion rules applied consistently across PDF and EPUB:**
+- Page numbers (isolated digits) and running headers/footers are ignored
+- Figure/table captions are rendered as plain text after the element, not as headings
+- PDF two-column layouts are merged into single-column reading order (left column first)
+- EPUB semantic elements: `<aside>` and `epub:type="footnote"` → footnotes; `<cite>` → italic
 
 **Repetition filtering** runs two passes after generation:
 1. **Line-level**: a line of 25+ chars reappearing within 6 lines triggers truncation.

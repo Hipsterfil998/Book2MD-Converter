@@ -65,7 +65,7 @@ class DependencyParser(PipelineStep):
             print(f"Loading Stanza pipeline for '{lang}'...")
             self.pipelines[lang] = stanza.Pipeline(
                 lang=lang,
-                processors="tokenize,mwt,pos,lemma,depparse",
+                processors="tokenize,mwt,pos,lemma,depparse,ner",
                 download_method=None,
             )
 
@@ -74,6 +74,7 @@ class DependencyParser(PipelineStep):
         lines = []
         for sentence in doc.sentences:
             for word in sentence.words:
+                ner_tag = word.parent.ner if word.parent else "O"
                 fields = [
                     str(word.id),
                     word.text,
@@ -84,7 +85,7 @@ class DependencyParser(PipelineStep):
                     str(word.head if word.head is not None else 0),
                     word.deprel or "_",
                     "_",
-                    "_",
+                    f"NER={ner_tag}" if ner_tag and ner_tag != "O" else "_",
                 ]
                 lines.append("\t".join(fields))
             lines.append("")
@@ -93,19 +94,27 @@ class DependencyParser(PipelineStep):
     def _doc_to_json(self, doc, source_file: str, lang: str) -> dict:
         """Convert a Stanza Document to a JSON-serialisable dict."""
         sentences = [
-            {"tokens": [
-                {
-                    "id": word.id,
-                    "text": word.text,
-                    "lemma": word.lemma,
-                    "upos": word.upos,
-                    "xpos": word.xpos,
-                    "feats": word.feats,
-                    "head": word.head if word.head is not None else 0,
-                    "deprel": word.deprel,
-                }
-                for word in sentence.words
-            ]}
+            {
+                "tokens": [
+                    {
+                        "id": word.id,
+                        "text": word.text,
+                        "lemma": word.lemma,
+                        "upos": word.upos,
+                        "xpos": word.xpos,
+                        "feats": word.feats,
+                        "head": word.head if word.head is not None else 0,
+                        "deprel": word.deprel,
+                        "ner": word.parent.ner if word.parent else "O",
+                    }
+                    for word in sentence.words
+                ],
+                "entities": [
+                    {"text": ent.text, "type": ent.type,
+                     "start": ent.start_char, "end": ent.end_char}
+                    for ent in sentence.ents
+                ],
+            }
             for sentence in doc.sentences
         ]
         return {"file": source_file, "lang": lang, "sentences": sentences}
