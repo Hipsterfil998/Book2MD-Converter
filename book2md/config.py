@@ -49,6 +49,7 @@ Rules:
 - Ignore running headers/footers (repeated text like author name or chapter title)
 - Captions below figures/tables: render as plain text after the image/table, not as headings
 - Two-column layouts: merge into single-column reading order (left column first, then right)
+- Do not declare footnotes ([^n]:) unless their text content appears on this page
 - Output ONLY the Markdown, no commentary"""
 
 
