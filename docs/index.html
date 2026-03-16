@@ -520,9 +520,9 @@ pip install -e .           # installs book2md as a command</code></pre>
       <span class="f-dir">books/</span>
     </div>
     <div class="flow-group">
-      &nbsp;&nbsp;<span class="f-file">*.pdf</span>  &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-node">PDFConverter</span>  &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">output/{stem}/{stem}.md</span><br>
+      &nbsp;&nbsp;<span class="f-file">*.pdf</span>  &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-node">PDFConverter</span>  &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">output/{stem}/{stem}.md + {stem}.txt</span><br>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">eval_pages/{i}.md + {i}.ref.md</span><br>
-      &nbsp;&nbsp;<span class="f-file">*.epub</span> &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-node">EPUBConverter</span> &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">output/{stem}/{stem}.md</span><br>
+      &nbsp;&nbsp;<span class="f-file">*.epub</span> &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-node">EPUBConverter</span> &nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">output/{stem}/{stem}.md + {stem}.txt</span><br>
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="f-arrow">→</span>&nbsp; <span class="f-out">eval_chunks/{i}.md + {i}.ref.md</span>
     </div>
     <div class="flow-group">
@@ -650,6 +650,14 @@ PathConfig     # input_dir, output_dir, scores_dir, metadata_csv</code></pre>
     <code>repetition_penalty</code> in <code>SamplingParams</code>.
   </p>
 
+  <h3>md_to_txt(md)</h3>
+  <p>
+    Strips Markdown syntax from a string and returns plain text. Removes headings markers,
+    bold/italic, images, links, blockquotes, list markers, tables, horizontal rules, and
+    footnote declarations. Used by all converters to produce a <code>.txt</code> file
+    alongside every <code>.md</code> output file.
+  </p>
+
   <h3>suppress_worker_stderr()</h3>
   <p>
     Intercepts file descriptor 2 at the OS level (not just <code>sys.stderr</code>) during
@@ -751,7 +759,8 @@ book2md convert --help  # subcommand options</code></pre>
     <li>Blank pages (&lt;0.1% non-white pixels) are detected and skipped before batch inference.</li>
     <li>Builds a batch of multimodal messages and runs inference with <code>LLM.chat()</code> — all pages in one call.</li>
     <li>Passes each output through <code>_clean()</code> (strips code fences, truncates repetition loops via <code>truncate_repetitions()</code>).</li>
-    <li>Saves the resulting Markdown to <code>eval_pages/{i}.md</code> and the PyMuPDF text-layer reference to <code>eval_pages/{i}.ref.md</code>.</li>
+    <li>Saves the full Markdown to <code>{stem}.md</code> and a plain-text version to <code>{stem}.txt</code> (via <code>md_to_txt()</code>).</li>
+    <li>Saves sampled page pairs to <code>eval_pages/{i}.md</code> and the PyMuPDF text-layer reference to <code>eval_pages/{i}.ref.md</code>.</li>
   </ol>
   <div class="callout">
     <span class="callout-icon">💡</span>

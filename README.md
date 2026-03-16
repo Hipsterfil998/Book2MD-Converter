@@ -21,7 +21,7 @@ book2md/
 ├── __init__.py                    # Public API: from book2md import ConverterPipeline, ...
 ├── base.py                        # Abstract PipelineStep base class
 ├── config.py                      # Typed configuration dataclasses
-├── utils.py                       # Shared utilities (image encoding, sampling, repetition filter)
+├── utils.py                       # Shared utilities (image encoding, sampling, repetition filter, md→txt)
 ├── pipeline.py                    # ConverterPipeline orchestrator
 ├── cli.py                         # CLI entry point
 ├── converters/
@@ -235,6 +235,7 @@ NER tags follow the BIO scheme (e.g. `B-PER`, `I-ORG`). In CoNLL-U output, entit
 output/
 └── book_name/
     ├── book_name.md          # full Markdown output
+    ├── book_name.txt         # plain text output (Markdown syntax stripped)
     ├── images/               # embedded images
     ├── eval_pages/           # PDF: sampled page pairs for evaluation
     │   ├── 0.md              #   LLM-generated Markdown
