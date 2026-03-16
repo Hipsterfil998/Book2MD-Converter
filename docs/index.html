@@ -958,19 +958,31 @@ evaluator.evaluate_all(output_dir="output/", scores_dir="scores/")</code></pre>
       Language is detected automatically from the first 3000 characters using
       <code>langdetect</code> (<code>DetectorFactory.seed = 0</code> for reproducibility).
     </li>
-    <li>Only the matching Stanza pipeline runs: tokenize + MWT + POS + lemma + depparse.</li>
+    <li>Only the matching Stanza pipeline runs: tokenize + MWT + POS + lemma + depparse + NER.</li>
     <li>Output: a single <code>{stem}.conllu</code> / <code>{stem}.json</code>, no language suffix.</li>
   </ol>
 
   <h3>CoNLL-U token fields</h3>
   <div class="code-block">
     <div class="code-label">conllu</div>
-    <pre><code>id | text | lemma | upos | xpos | feats | head | deprel | _ | _</code></pre>
+    <pre><code>id | text | lemma | upos | xpos | feats | head | deprel | _ | MISC</code></pre>
   </div>
   <p>
     <code>head</code> is the index of the governing token (0 = root).
     <code>deprel</code> is the dependency relation type (e.g. <code>nsubj</code>, <code>obj</code>, <code>root</code>).
+    <code>MISC</code> contains the NER tag in BIO format (e.g. <code>NER=B-PER</code>, <code>NER=I-ORG</code>);
+    non-entity tokens have <code>_</code>.
   </p>
+
+  <h3>JSON NER output</h3>
+  <p>
+    Each sentence object contains a <code>"tokens"</code> array (with a per-token <code>"ner"</code> BIO tag)
+    and an <code>"entities"</code> array with span-level entries:
+  </p>
+  <div class="code-block">
+    <div class="code-label">json</div>
+    <pre><code>{"text": "Eurac Research", "type": "ORG", "start": 12, "end": 26}</code></pre>
+  </div>
 
   <hr>
 
