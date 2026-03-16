@@ -4,6 +4,7 @@ import base64
 import contextlib
 import os
 import random
+import re
 import sys
 import threading
 from io import BytesIO
@@ -63,6 +64,24 @@ def suppress_worker_stderr():
         os.dup2(real_fd, 2)   # restoring fd 2 closes the write end → pump thread sees EOF
         os.close(real_fd)
         t.join(timeout=5)
+
+
+def md_to_txt(md: str) -> str:
+    """Strip Markdown syntax and return plain text."""
+    text = re.sub(r'<!--.*?-->', '', md, flags=re.DOTALL)       # HTML comments
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)  # headings
+    text = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)          # bold / italic
+    text = re.sub(r'!\[.*?\]\(.*?\)', '', text)                  # images
+    text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)              # links
+    text = re.sub(r'^>\s?', '', text, flags=re.MULTILINE)        # blockquotes
+    text = re.sub(r'^[-*+]\s+', '', text, flags=re.MULTILINE)    # unordered lists
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)    # ordered lists
+    text = re.sub(r'^\|.*\|$', '', text, flags=re.MULTILINE)     # tables
+    text = re.sub(r'^-{3,}$', '', text, flags=re.MULTILINE)      # horizontal rules
+    text = re.sub(r'^\[\^.*?\].*', '', text, flags=re.MULTILINE) # footnotes
+    text = re.sub(r'\[\^.*?\]', '', text)                        # inline footnote refs
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 
 def truncate_repetitions(text: str, min_len: int = 25, window: int = 6) -> str:

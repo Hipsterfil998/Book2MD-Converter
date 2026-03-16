@@ -9,7 +9,7 @@ from ebooklib.epub import EpubImage
 from book2md.config import epub_config, eval_config
 from book2md.base import PipelineStep
 from vllm import LLM, SamplingParams
-from book2md.utils import sample_indices, suppress_worker_stderr, truncate_repetitions
+from book2md.utils import md_to_txt, sample_indices, suppress_worker_stderr, truncate_repetitions
 
 # Filenames that indicate a navigation / TOC document — skip these during conversion
 _TOC_FILENAME_RE = re.compile(r"(toc|nav|contents|index|ncx)", re.IGNORECASE)
@@ -157,6 +157,7 @@ class EpubToMarkdownConverter(PipelineStep):
         markdown = "\n\n".join(raw_texts)
 
         output.write_text(markdown, encoding="utf-8")
+        output.with_suffix(".txt").write_text(md_to_txt(markdown), encoding="utf-8")
 
         # Save sampled Markdown pairs for later evaluation.
         # {j}.ref.md: HTML chunk converted to Markdown (reference, no LLM).

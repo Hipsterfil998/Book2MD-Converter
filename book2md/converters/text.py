@@ -5,6 +5,7 @@ from ebooklib import epub
 from ebooklib.epub import EpubHtml
 from bs4 import BeautifulSoup, NavigableString, Tag
 from tqdm import tqdm
+from book2md.utils import md_to_txt
 
 _CAPTION_RE = re.compile(r"^(figura|figure|fig\.?|tabella|table|tab\.?)\s*\d*", re.I)
 
@@ -37,7 +38,9 @@ class DocumentProcessor:
             md_lines.append("")
 
         doc.close()
-        (output / f"{filename}.md").write_text("\n".join(md_lines), encoding="utf-8")
+        md_content = "\n".join(md_lines)
+        (output / f"{filename}.md").write_text(md_content, encoding="utf-8")
+        (output / f"{filename}.txt").write_text(md_to_txt(md_content), encoding="utf-8")
         return pages
 
     def _extract_pdf_page_blocks(
@@ -154,7 +157,9 @@ class DocumentProcessor:
             if md.strip()
         ]
 
-        (output / f"{filename}.md").write_text("\n\n---\n\n".join(chapters), encoding="utf-8")
+        md_content = "\n\n---\n\n".join(chapters)
+        (output / f"{filename}.md").write_text(md_content, encoding="utf-8")
+        (output / f"{filename}.txt").write_text(md_to_txt(md_content), encoding="utf-8")
         return chapters
 
     def _epub_html_to_markdown(self, html: str) -> str:

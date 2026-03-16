@@ -7,7 +7,7 @@ from pdf2image import convert_from_path
 from book2md.config import pdf_config, eval_config
 from book2md.base import PipelineStep
 from vllm import LLM, SamplingParams
-from book2md.utils import pil_to_data_url, sample_indices, suppress_worker_stderr, truncate_repetitions
+from book2md.utils import md_to_txt, pil_to_data_url, sample_indices, suppress_worker_stderr, truncate_repetitions
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,9 @@ class PDFToMarkdownConverter(PipelineStep):
             markdown_pages.append(f"<!-- Page {j + 1} -->\n{text}")
 
         out_file = output_dir / (pdf_path.stem + ".md")
-        out_file.write_text("\n\n".join(markdown_pages), encoding="utf-8")
+        md_content = "\n\n".join(markdown_pages)
+        out_file.write_text(md_content, encoding="utf-8")
+        (output_dir / (pdf_path.stem + ".txt")).write_text(md_to_txt(md_content), encoding="utf-8")
         logger.info("Saved → %s", out_file)
 
         # Save sampled Markdown pairs for later evaluation.
